@@ -26,24 +26,11 @@ const myMarkSpec: MarkSpec = {
 };
 
 const strikethroughSpec: MarkSpec = {
-	attrs: { 'text-decoration': { default: 'line-through' } },
-	parseDOM: [
-		{
-			tag: 'span[data-strikethrough]',
-			getAttrs: (dom) => {
-				if (typeof dom === 'string') return {};
-				return { 'text-decoration': dom.getAttribute('data-text-decoration') || 'none' };
-			}
-		}
-	],
-	toDOM(mark) {
+	parseDOM: [{ tag: 'span[data-strikethrough]' }],
+	toDOM() {
 		return [
 			'span',
-			{
-				'data-strikethrough': 'true',
-				'data-text-decoration': mark.attrs['text-decoration'],
-				style: `text-decoration: ${mark.attrs['text-decoration']}`
-			},
+			{ 'data-strikethrough': 'true', style: 'text-decoration: line-through' },
 			0
 		];
 	}

@@ -7,18 +7,12 @@ import { toggleMark } from 'prosemirror-commands';
 import { Fragment, Node, type Attrs, type MarkType } from 'prosemirror-model';
 import { editorSchema } from './schema';
 import { slashCommandKey } from './plugin/slash-command-plugin';
-import { createCustomKeyMapPlugin } from './plugin/yt-keymap-plugin.svelte';
+import { createCustomKeyMapPlugin } from './plugin/yt-keymap-plugin';
 import { DOMParser } from 'prosemirror-model';
-
-function simpleFormatSecondsToMMSS(totalSeconds: number) {
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = Math.floor(totalSeconds % 60);
-
-	return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
+import { formatSecondsToMMSS } from '$lib/utils';
 
 type ProseViewOptions = {
-	onUpdate: (data: {}) => void;
+	onUpdate: (data: unknown) => void;
 	onCtrlP: () => void;
 	onCtrlN: () => void;
 	onCtrlM: () => void;
@@ -63,12 +57,21 @@ export class ProseView {
 	view: EditorView | null = $state.raw(null);
 	state: EditorState | null = $state.raw(null);
 	schema = editorSchema;
+	#onUpdate?: (data: unknown) => void;
+	#onCtrlP?: () => void;
+	#onCtrlN?: () => void;
+	#onCtrlM?: () => void;
 
 	constructor(
 		target: HTMLDivElement,
 		content: Object | string,
 		options?: Partial<ProseViewOptions>
 	) {
+		this.#onUpdate = options?.onUpdate;
+		this.#onCtrlP = options?.onCtrlP;
+		this.#onCtrlN = options?.onCtrlN;
+		this.#onCtrlM = options?.onCtrlM;
+
 		let doc;
 
 		if (typeof content === 'object') {
@@ -83,9 +86,9 @@ export class ProseView {
 				...exampleSetup({ schema: editorSchema, menuBar: false }),
 				emptyParagraphPlugin,
 				createCustomKeyMapPlugin({
-					onCtrlP: () => options?.onCtrlP?.(),
-					onCtrlN: () => options?.onCtrlN?.(),
-					onCtrlM: () => options?.onCtrlM?.()
+					onCtrlP: () => this.#onCtrlP?.(),
+					onCtrlN: () => this.#onCtrlN?.(),
+					onCtrlM: () => this.#onCtrlM?.()
 				})
 			]
 		});
@@ -103,13 +106,20 @@ export class ProseView {
 					this.state = newState;
 
 					if (tr.docChanged) {
-						options?.onUpdate?.(view.state.doc.toJSON());
+						this.#onUpdate?.(view.state.doc.toJSON());
 					}
 				}
 			}
 		);
 
 		this.view = view;
+	}
+
+	setHandlers(handlers: Partial<ProseViewOptions>) {
+		if ('onUpdate' in handlers) this.#onUpdate = handlers.onUpdate;
+		if ('onCtrlP' in handlers) this.#onCtrlP = handlers.onCtrlP;
+		if ('onCtrlN' in handlers) this.#onCtrlN = handlers.onCtrlN;
+		if ('onCtrlM' in handlers) this.#onCtrlM = handlers.onCtrlM;
 	}
 
 	registerPlugin(plugin: Plugin) {
@@ -150,12 +160,10 @@ export class ProseView {
 		tm(this.view!.state, this.view!.dispatch, this.view!);
 	}
 
-	onCommand() {}
-
 	insertTimeBlock(time: number) {
 		const state = slashCommandKey.getState(this.view!.state);
 
-		const formattedTime = simpleFormatSecondsToMMSS(time);
+		const formattedTime = formatSecondsToMMSS(time);
 
 		// Delete the slash command text first
 		const { from, to } = state.range;

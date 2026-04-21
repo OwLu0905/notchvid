@@ -1,5 +1,5 @@
 export interface YouTubePlayerContext {
-	getPlayer: () => any;
+	getPlayer: () => YT.Player | null;
 	getReady: () => boolean;
 	getError: () => string | null;
 }
@@ -7,3 +7,5 @@ export interface YouTubePlayerContext {
 export interface YouTubeSliderContext {
 	getSliderValues: () => [number, number];
 }
+
+export type TSLIDER_VALUES = [left: number, right: number];

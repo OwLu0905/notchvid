@@ -1,13 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { ProseView } from './prose-view.svelte';
 	import { slashCommandPlugin } from './plugin/slash-command-plugin';
 	import * as Command from '$lib/components/ui/command/index.js';
 	import { blur } from 'svelte/transition';
-
-	function parseMMSSToSeconds(timeString: string): number {
-		const [minutes, seconds] = timeString.split(':').map(Number);
-		return minutes * 60 + seconds;
-	}
+	import { clampToViewport } from './utils';
+	import { parseMMSSToSeconds } from '$lib/utils';
 
 	interface Props {
 		editor: ProseView;
@@ -22,65 +20,41 @@
 	let menuElement: HTMLDivElement | undefined = $state();
 
 	function adjustMenuPosition(coords: { left: number; top: number }) {
-		// Set initial position (will be adjusted after render)
 		menuPosition = coords;
 		menuVisible = true;
 
-		// Wait for next frame to measure and adjust position
 		requestAnimationFrame(() => {
 			if (!menuElement) return;
-
-			const menuWidth = menuElement.offsetWidth;
-			const menuHeight = menuElement.offsetHeight;
-			const padding = 8;
-
-			// Ensure menu stays within horizontal viewport bounds
-			let adjustedLeft = coords.left;
-			const maxLeft = window.innerWidth - menuWidth - padding;
-			const minLeft = padding;
-
-			if (adjustedLeft > maxLeft) {
-				adjustedLeft = maxLeft;
-			} else if (adjustedLeft < minLeft) {
-				adjustedLeft = minLeft;
-			}
-
-			// Ensure menu stays within vertical viewport bounds
-			let adjustedTop = coords.top;
-			const maxTop = window.innerHeight - menuHeight - padding;
-			const minTop = padding;
-
-			if (adjustedTop > maxTop) {
-				adjustedTop = maxTop;
-			} else if (adjustedTop < minTop) {
-				adjustedTop = minTop;
-			}
-
-			menuPosition = { left: adjustedLeft, top: adjustedTop };
+			menuPosition = clampToViewport(coords, {
+				width: menuElement.offsetWidth,
+				height: menuElement.offsetHeight
+			});
 		});
 	}
 
-	$effect(() => {
-		if (editor?.view) {
-			const plugin = slashCommandPlugin({
-				onShowMenu(coords, commands) {
-					filteredCommands = commands;
-					adjustMenuPosition(coords);
-				},
-				onHideMenu() {
-					menuVisible = false;
-				},
-				getTime() {
-					return currentTime;
-				},
-				onTimeBlockClick: (time) => {
-					playTimeBlock(parseMMSSToSeconds(time));
-				}
-			});
-			editor.registerPlugin(plugin);
+	function runCommand(name: string) {
+		if (name === 'time') editor.insertTimeBlock(currentTime);
+	}
 
-			return () => editor.unregisterPlugin(plugin);
-		}
+	onMount(() => {
+		const plugin = slashCommandPlugin({
+			onShowMenu(coords, commands) {
+				filteredCommands = commands;
+				adjustMenuPosition(coords);
+			},
+			onHideMenu() {
+				menuVisible = false;
+			},
+			getTime() {
+				return currentTime;
+			},
+			onTimeBlockClick: (time) => {
+				playTimeBlock(parseMMSSToSeconds(time));
+			}
+		});
+		editor.registerPlugin(plugin);
+
+		return () => editor.unregisterPlugin(plugin);
 	});
 </script>
 
@@ -96,11 +70,7 @@
 			<Command.List>
 				<Command.Group heading={'helper'}>
 					{#each filteredCommands as cmd}
-						<Command.Item
-							onclick={() => {
-								editor.insertTimeBlock(currentTime);
-							}}
-						>
+						<Command.Item onclick={() => runCommand(cmd.name)}>
 							<div class="slash-menu-item">
 								<span class="name">{cmd.name}</span>
 							</div>

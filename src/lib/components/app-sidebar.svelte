@@ -22,118 +22,11 @@
 				items: [
 					{
 						title: 'Routing',
-						url: '#'
+						url: '1'
 					},
 					{
 						title: 'Data Fetching',
-						url: '#',
-						isActive: true
-					},
-					{
-						title: 'Rendering',
-						url: '#'
-					},
-					{
-						title: 'Caching',
-						url: '#'
-					},
-					{
-						title: 'Styling',
-						url: '#'
-					},
-					{
-						title: 'Optimizing',
-						url: '#'
-					},
-					{
-						title: 'Configuring',
-						url: '#'
-					},
-					{
-						title: 'Testing',
-						url: '#'
-					},
-					{
-						title: 'Authentication',
-						url: '#'
-					},
-					{
-						title: 'Deploying',
-						url: '#'
-					},
-					{
-						title: 'Upgrading',
-						url: '#'
-					},
-					{
-						title: 'Examples',
-						url: '#'
-					}
-				]
-			},
-			{
-				title: 'API Reference',
-				url: '#',
-				items: [
-					{
-						title: 'Components',
-						url: '#'
-					},
-					{
-						title: 'File Conventions',
-						url: '#'
-					},
-					{
-						title: 'Functions',
-						url: '#'
-					},
-					{
-						title: 'next.config.js Options',
-						url: '#'
-					},
-					{
-						title: 'CLI',
-						url: '#'
-					},
-					{
-						title: 'Edge Runtime',
-						url: '#'
-					}
-				]
-			},
-			{
-				title: 'Architecture',
-				url: '#',
-				items: [
-					{
-						title: 'Accessibility',
-						url: '#'
-					},
-					{
-						title: 'Fast Refresh',
-						url: '#'
-					},
-					{
-						title: 'Next.js Compiler',
-						url: '#'
-					},
-					{
-						title: 'Supported Browsers',
-						url: '#'
-					},
-					{
-						title: 'Turbopack',
-						url: '#'
-					}
-				]
-			},
-			{
-				title: 'Community',
-				url: '#',
-				items: [
-					{
-						title: 'Contribution Guide',
-						url: '#'
+						url: '2'
 					}
 				]
 			}
@@ -144,6 +37,7 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	// import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
@@ -157,6 +51,8 @@
 	let { ref = $bindable(null), ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
 
 	const sidebar = useSidebar();
+	let url = $derived(page.url);
+	let pathname = $derived(url.pathname);
 
 	const session = authClient.useSession();
 	const user = $derived($session.data?.user);
@@ -200,9 +96,9 @@
 							<Sidebar.MenuSub class="ms-0 border-s-0 px-1.5">
 								{#each item.items as subItem (subItem.title)}
 									<Sidebar.MenuSubItem>
-										<Sidebar.MenuSubButton isActive={subItem.isActive}>
+										<Sidebar.MenuSubButton isActive={pathname === `/video/${subItem.url}`}>
 											{#snippet child({ props })}
-												<a href={subItem.url} {...props}>{subItem.title}</a>
+												<a href={`/video/${subItem.url}`} {...props}>{subItem.title}</a>
 											{/snippet}
 										</Sidebar.MenuSubButton>
 									</Sidebar.MenuSubItem>

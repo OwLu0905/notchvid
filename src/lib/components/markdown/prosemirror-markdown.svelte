@@ -4,11 +4,6 @@
 	import { cn } from '$lib/utils';
 
 	import SlashCommandView from './slash-command-view.svelte';
-	// import {
-	// 	// createMarkdown,
-	// 	// updateMarkdown,
-	// 	type MarkdownMap
-	// } from '$lib/remote/echo/markdown/data.remote';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { onDestroy } from 'svelte';
 
@@ -32,8 +27,7 @@
 	let editor: ProseView | null = $state(null);
 	let editorContainer: HTMLDivElement;
 	let saveTimeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
-
-	let editorLoaded = $state(false);
+	let lastDraft: unknown = null;
 
 	const debouncedSave = (cb: () => void, delay = 300) => {
 		if (saveTimeoutId) {
@@ -42,49 +36,55 @@
 
 		saveTimeoutId = setTimeout(() => cb(), delay);
 	};
-	function storeMarkdown(data: any) {
+	function storeMarkdown(data: unknown) {
 		// updateMarkdown({ echoId, content: data, type: 'draft' });
 	}
 
+	// Rebuild the editor whenever the draft identity changes
+	// (initial load, route change, create/discard draft).
 	$effect(() => {
-		// if (markdownMap.draft && !editorLoaded) {
-		if (!editorLoaded) {
-			editorLoaded = true;
-			console.log('??');
-			editor = new ProseView(editorContainer, markdownMap?.draft?.content ?? '', {
-				onUpdate: (data) => {
-					debouncedSave(() => storeMarkdown(data));
-				},
-				onCtrlP: () => {
-					playPause();
-				},
-				onCtrlN: () => {
-					playBackForth(true);
-				},
-				onCtrlM: () => {
-					playBackForth(false);
-				}
-			});
+		const draft = markdownMap?.draft;
+		if (draft === lastDraft) return;
+		lastDraft = draft;
+
+		if (saveTimeoutId) {
+			clearTimeout(saveTimeoutId);
+			saveTimeoutId = undefined;
 		}
+		editor?.destroy();
+		editor = null;
+
+		if (!draft) return;
+
+		editor = new ProseView(editorContainer, draft.content ?? '', {
+			onUpdate: (data) => debouncedSave(() => storeMarkdown(data)),
+			onCtrlP: playPause,
+			onCtrlN: () => playBackForth(true),
+			onCtrlM: () => playBackForth(false)
+		});
 	});
+
+	// Keep handlers live if the parent re-binds them.
+	$effect(() => {
+		editor?.setHandlers({
+			onUpdate: (data) => debouncedSave(() => storeMarkdown(data)),
+			onCtrlP: playPause,
+			onCtrlN: () => playBackForth(true),
+			onCtrlM: () => playBackForth(false)
+		});
+	});
+
 	onDestroy(() => {
-		if (editor && markdownMap.draft) {
-			editor.destroy();
-			console.log('destroy');
-		}
+		if (saveTimeoutId) clearTimeout(saveTimeoutId);
+		editor?.destroy();
 	});
 </script>
 
-{#if editor}
+{#if editor && markdownMap.draft}
 	<BubbleMenuView {editor} />
 	<SlashCommandView {editor} {currentTime} {playTimeBlock} />
 {/if}
-<!-- {#if editor && markdownMap.draft}
-	<BubbleMenuView {editor} />
-	<SlashCommandView {editor} {currentTime} {playTimeBlock} />
-{/if} -->
 
-<div>123</div>
 <div
 	class={cn(
 		// !markdownMap.draft ? 'opacity-0' : 'opacity-100',

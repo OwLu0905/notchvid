@@ -3,8 +3,6 @@
 
 	let YouTube: typeof window.YT.Player | null = $state(null);
 
-	let player: InstanceType<typeof window.YT.Player> | null = $state(null);
-
 	if (browser) {
 		function tryAssignYouTube() {
 			if (!YouTube && window?.YT?.Player) {
@@ -12,9 +10,12 @@
 			}
 		}
 
+		const prevReady = window.onYouTubeIframeAPIReady;
 		window.onYouTubeIframeAPIReady = () => {
+			prevReady?.();
 			tryAssignYouTube();
 		};
+
 		if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
 			const tag = document.createElement('script');
 			tag.src = 'https://www.youtube.com/iframe_api';
@@ -27,13 +28,11 @@
 </script>
 
 <script lang="ts">
-	import { getContext, onDestroy, onMount, setContext, type Snippet } from 'svelte';
-
-	import { ytKey } from './yt-keys';
-	import { sliderValuesKey } from './yt-keys';
-
-	import type { YouTubePlayerContext, YouTubeSliderContext } from './types';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import { fade } from 'svelte/transition';
+
+	import { getSliderContext, setYtContext } from './yt-keys';
+	import type YT from 'youtube';
 
 	interface Props {
 		action?: Snippet;
@@ -42,72 +41,106 @@
 		isLiteLoad?: boolean;
 	}
 
-	let playerContainer: HTMLElement | null = $state(null);
-
-	let isReady = $state(false);
-	let initError = $state<string | null>(null);
-
 	let { videoId, action, children, isLiteLoad = true }: Props = $props();
 
-	let thumbnailUrl = $derived(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
+	let player: YT.Player | null = $state(null);
+	let playerContainer: HTMLElement | null = $state(null);
+	let isReady = $state(false);
+	let initError = $state<string | null>(null);
+	let liteLoaded = $state(untrack(() => !isLiteLoad));
 
-	let liteLoaded = $state(!isLiteLoad);
+	let thumbnailUrl = $derived(`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`);
+	let thumbnailFallback = $derived(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
 
-	setContext<YouTubePlayerContext>(ytKey, {
+	setYtContext({
 		getPlayer: () => player,
 		getReady: () => isReady,
 		getError: () => initError
 	});
 
-	const { getSliderValues } = getContext<YouTubeSliderContext>(sliderValuesKey);
-
+	const { getSliderValues } = getSliderContext();
 	const sliderValues = getSliderValues();
 
-	onMount(() => {
-		if (!YouTube) return;
-		if (!playerContainer) return;
+	const AutoPlay = {
+		NoAutoPlay: 0,
+		AutoPlay: 1
+	};
 
-		player = new YouTube(playerContainer, {
-			videoId,
-			playerVars: {
-				rel: 0,
-				autoplay: !isLiteLoad ? 0 : !action && liteLoaded ? 1 : 0,
-				origin: 'https://www.youtube.com'
-			},
-			events: {
-				onReady: (event) => {
-					console.log('Ready', videoId);
-					isReady = true;
-					sliderValues[0] = 0;
-					sliderValues[1] = event.target.getDuration();
-				},
-				onError: (e) => {
-					console.error('YouTube player error:', e);
-					initError = 'Failed to play video';
-				}
+	$effect(() => {
+		const nextVideoId = videoId;
+		const Ctor = YouTube;
+		const container = playerContainer;
+		if (!Ctor || !container) return;
+
+		untrack(() => {
+			if (player) {
+				player.loadVideoById(nextVideoId);
+				return;
 			}
+			const autoplay =
+				!isLiteLoad || (!action && liteLoaded) ? AutoPlay.AutoPlay : AutoPlay.NoAutoPlay;
+
+			player = new Ctor(container, {
+				videoId: nextVideoId,
+				playerVars: {
+					rel: 0,
+					autoplay,
+					origin: 'https://www.youtube.com'
+				},
+				events: {
+					onReady: (event) => {
+						isReady = true;
+						sliderValues[0] = 0;
+						sliderValues[1] = event.target.getDuration();
+					},
+					onError: (e) => {
+						console.error('YouTube player error:', e);
+						initError = 'Failed to play video';
+					}
+				}
+			});
 		});
 	});
 
 	onDestroy(() => {
-		if (player) {
-			player.destroy();
+		try {
+			player?.destroy();
+		} catch (e) {
+			console.error('Failed to destroy YouTube player:', e);
 		}
+		player = null;
 	});
+
+	function activateLite() {
+		liteLoaded = true;
+	}
+
+	function handleLiteKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			activateLite();
+		}
+	}
 </script>
 
 {#if !action && !liteLoaded}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		aria-label="Play YouTube video"
 		role="button"
 		tabindex="0"
-		onclick={() => {
-			liteLoaded = true;
-		}}
-		class="relative aspect-video h-[360px] w-[640px] max-w-full cursor-pointer overflow-hidden bg-black bg-cover bg-center bg-repeat"
-		style="background-image:url({thumbnailUrl});"
+		onclick={activateLite}
+		onkeydown={handleLiteKeydown}
+		class="relative aspect-video h-90 w-160 max-w-full cursor-pointer overflow-hidden bg-black"
 	>
+		<img
+			src={thumbnailUrl}
+			alt=""
+			class="absolute inset-0 h-full w-full object-cover"
+			onerror={(e) => {
+				const img = e.currentTarget as HTMLImageElement;
+				if (img.src !== thumbnailFallback) img.src = thumbnailFallback;
+			}}
+		/>
 		<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
 			<svg viewBox="0 0 68 48" width="68" height="48">
 				<path

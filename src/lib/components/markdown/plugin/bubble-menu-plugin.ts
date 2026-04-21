@@ -1,4 +1,5 @@
 import { Plugin, PluginKey, Selection } from 'prosemirror-state';
+import { clampToViewport } from '../utils';
 
 const bubbleMenuKey = new PluginKey('bubbleMenu');
 type BubbleMenuPluginProps = {
@@ -26,33 +27,10 @@ export function bubbleMenuPlugin(props: BubbleMenuPluginProps) {
 
 		// Wait for next frame to measure actual dimensions and adjust position
 		requestAnimationFrame(() => {
-			const menuWidth = element.offsetWidth;
-			const menuHeight = element.offsetHeight;
-			const padding = 8;
-
-			// Ensure menu stays within horizontal viewport bounds
-			let adjustedLeft = left;
-			const maxLeft = window.innerWidth - menuWidth - padding;
-			const minLeft = padding;
-
-			if (adjustedLeft > maxLeft) {
-				adjustedLeft = maxLeft;
-			} else if (adjustedLeft < minLeft) {
-				adjustedLeft = minLeft;
-			}
-
-			// Ensure menu stays within vertical viewport bounds
-			let adjustedTop = top;
-			const maxTop = window.innerHeight - menuHeight - padding;
-			const minTop = padding;
-
-			if (adjustedTop > maxTop) {
-				adjustedTop = maxTop;
-			} else if (adjustedTop < minTop) {
-				adjustedTop = minTop;
-			}
-
-			// Apply adjusted position and make fully visible
+			const { left: adjustedLeft, top: adjustedTop } = clampToViewport(
+				{ left, top },
+				{ width: element.offsetWidth, height: element.offsetHeight }
+			);
 			element.style.top = `${adjustedTop}px`;
 			element.style.left = `${adjustedLeft}px`;
 			element.style.opacity = '1';

@@ -1,14 +1,7 @@
-// slash-command-plugin.svelte.ts
-import { EditorState, Plugin, PluginKey, Transaction } from 'prosemirror-state';
+import { Plugin, PluginKey } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { Fragment } from 'prosemirror-model';
-
-function simpleFormatSecondsToMMSS(totalSeconds: number) {
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = Math.floor(totalSeconds % 60);
-
-	return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
+import { formatSecondsToMMSS } from '$lib/utils';
 
 export const slashCommandKey = new PluginKey('slashCommand');
 
@@ -45,10 +38,8 @@ function executeCommand(
 
 	switch (commandName) {
 		case 'time': {
-			// Use the time from parent component
 			const timeValue = options?.getTime?.() ?? 0;
-			// console.log(timeValue);
-			const formattedTime = simpleFormatSecondsToMMSS(timeValue); // Format as needed
+			const formattedTime = formatSecondsToMMSS(timeValue);
 			const timeNode = schema.nodes.timeBlock.create({ time: formattedTime });
 			const spaceNode = schema.text(' ');
 			const fragment = Fragment.from([timeNode, spaceNode]);
@@ -60,12 +51,6 @@ function executeCommand(
 	tr = tr.setMeta(slashCommandKey, { active: false, range: null, query: '' });
 	view.dispatch(tr);
 	view.focus();
-}
-
-function formatTime(ms: number): string {
-	// Format milliseconds to time string however you need
-	const date = new Date(ms);
-	return date.toLocaleTimeString();
 }
 
 export function slashCommandPlugin(options?: SlashCommandOptions) {

@@ -72,18 +72,6 @@ export function emRule(markType: MarkType) {
 	});
 }
 
-// /// Given a mark type, returns an input rule that turns `` `text` ``
-// /// into inline code.
-// export function codeRule(markType: MarkType) {
-// 	return new InputRule(/`([^`]+)`$/, (state, match, start, end) => {
-// 		const mark = markType.create();
-// 		const text = state.schema.text(match[1], [mark]);
-// 		return state.tr.replaceWith(start, end, text);
-// 	});
-// }
-
-///
-
 /// A set of input rules for creating the basic block quotes, lists,
 /// code blocks, and heading.
 export function buildInputRules(schema: Schema) {
@@ -95,10 +83,8 @@ export function buildInputRules(schema: Schema) {
 	if ((type = schema.nodes.code_block)) rules.push(codeBlockRule(type));
 	if ((type = schema.nodes.heading)) rules.push(headingRule(type, 6));
 
-	// Add inline mark rules
 	let mark;
 	if ((mark = schema.marks.strong)) rules.push(strongRule(mark));
 	if ((mark = schema.marks.em)) rules.push(emRule(mark));
-	// if ((mark = schema.marks.code)) rules.push(codeRule(mark));
 	return inputRules({ rules });
 }

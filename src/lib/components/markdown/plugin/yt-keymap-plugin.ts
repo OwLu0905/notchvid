@@ -1,4 +1,3 @@
-import { Plugin } from 'prosemirror-state';
 import { keymap } from 'prosemirror-keymap';
 import type { Command } from 'prosemirror-state';
 
@@ -10,28 +9,27 @@ interface CustomKeyMapOptions {
 	onCtrlP?: () => void;
 	onCtrlN?: () => void;
 	onCtrlM?: () => void;
-	// Add more custom handlers as needed
 }
 
 export function createCustomKeyMapPlugin(options: CustomKeyMapOptions) {
 	const customKeyMap: KeyMapConfig = {};
 
 	if (options.onCtrlP) {
-		customKeyMap['ctrl-p'] = (state, dispatch) => {
+		customKeyMap['Ctrl-p'] = () => {
 			options.onCtrlP?.();
-			return true; // Prevent default behavior
+			return true;
 		};
 	}
 
 	if (options.onCtrlN) {
-		customKeyMap['ctrl-n'] = (state, dispatch) => {
+		customKeyMap['Ctrl-n'] = () => {
 			options.onCtrlN?.();
 			return true;
 		};
 	}
 
 	if (options.onCtrlM) {
-		customKeyMap['ctrl-m'] = (state, dispatch) => {
+		customKeyMap['Ctrl-m'] = () => {
 			options.onCtrlM?.();
 			return true;
 		};
