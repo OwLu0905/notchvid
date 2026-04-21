@@ -155,7 +155,7 @@
 
 <div class="relative" in:fade>
 	{#if action || liteLoaded}
-		<div class="aspect-video h-auto w-full max-w-full py-2" bind:this={playerContainer}></div>
+		<div class="aspect-video h-auto w-full max-w-full rounded-lg" bind:this={playerContainer}></div>
 		{#if children}
 			{@render children()}
 		{/if}

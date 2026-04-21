@@ -15,7 +15,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// NOTE:
 	if (event.url.pathname.startsWith('/login') && event.locals.user) {
-		throw redirect(303, '/chat');
+		throw redirect(303, '/video');
 	}
 
 	if (!event.url.pathname.startsWith('/login') && !event.locals.user) {

@@ -1,51 +1,52 @@
 <script lang="ts">
-	import { ProseView } from './prose-view.svelte';
+	import { ProseView, type ProsemirrorDocData } from './prose-view.svelte';
 	import BubbleMenuView from './bubble-menu-view.svelte';
 	import { cn } from '$lib/utils';
 
 	import SlashCommandView from './slash-command-view.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
+	import { updateVideoMarkdown } from '$lib/remote/video.remote';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
+	import { fade } from 'svelte/transition';
 
 	interface Props {
-		echoId: string;
-		markdownMap: any;
+		videoId: string;
+		content: unknown;
 		currentTime: number;
 		playTimeBlock: (v: number) => void;
 		playPause: () => void;
 		playBackForth: (b: boolean) => void;
 	}
-	let {
-		echoId,
-		markdownMap = $bindable(),
-		currentTime,
-		playTimeBlock,
-		playPause,
-		playBackForth
-	}: Props = $props();
+	let { videoId, content, currentTime, playTimeBlock, playPause, playBackForth }: Props = $props();
 
 	let editor: ProseView | null = $state(null);
 	let editorContainer: HTMLDivElement;
 	let saveTimeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
-	let lastDraft: unknown = null;
+	let lastId: string | null = null;
 
-	const debouncedSave = (cb: () => void, delay = 300) => {
+	let saving = $state(false);
+
+	const debouncedSave = (cb: () => void, delay = 600) => {
 		if (saveTimeoutId) {
 			clearTimeout(saveTimeoutId);
 		}
 
 		saveTimeoutId = setTimeout(() => cb(), delay);
 	};
-	function storeMarkdown(data: unknown) {
-		// updateMarkdown({ echoId, content: data, type: 'draft' });
+
+	function storeMarkdown(data: ProsemirrorDocData) {
+		saving = true;
+		updateVideoMarkdown({ videoId, content: data }).then(() => {
+			saving = false;
+		});
 	}
 
-	// Rebuild the editor whenever the draft identity changes
-	// (initial load, route change, create/discard draft).
+	let markdownContent = $derived(content);
+
 	$effect(() => {
-		const draft = markdownMap?.draft;
-		if (draft === lastDraft) return;
-		lastDraft = draft;
+		if (videoId === lastId) return;
+		lastId = videoId;
 
 		if (saveTimeoutId) {
 			clearTimeout(saveTimeoutId);
@@ -54,14 +55,16 @@
 		editor?.destroy();
 		editor = null;
 
-		if (!draft) return;
-
-		editor = new ProseView(editorContainer, draft.content ?? '', {
-			onUpdate: (data) => debouncedSave(() => storeMarkdown(data)),
-			onCtrlP: playPause,
-			onCtrlN: () => playBackForth(true),
-			onCtrlM: () => playBackForth(false)
-		});
+		editor = new ProseView(
+			editorContainer,
+			untrack(() => content ?? ''),
+			{
+				onUpdate: (data) => debouncedSave(() => storeMarkdown(data)),
+				onCtrlP: playPause,
+				onCtrlN: () => playBackForth(true),
+				onCtrlM: () => playBackForth(false)
+			}
+		);
 	});
 
 	// Keep handlers live if the parent re-binds them.
@@ -80,43 +83,52 @@
 	});
 </script>
 
-{#if editor && markdownMap.draft}
+{#if editor && markdownContent}
 	<BubbleMenuView {editor} />
 	<SlashCommandView {editor} {currentTime} {playTimeBlock} />
 {/if}
 
-<div
-	class={cn(
-		// !markdownMap.draft ? 'opacity-0' : 'opacity-100',
-		'min-h-20',
-		'm-1.5 flex max-h-150 flex-col items-center overflow-auto rounded-lg border border-border bg-card px-4 py-2',
-		'transition-[color,box-shadow] has-focus-visible:border-ring has-focus-visible:ring-[3px]  has-focus-visible:ring-ring/50'
-	)}
->
+<div class="flex h-full min-h-0 flex-col">
 	<div
 		class={cn(
-			'prose prose-base prose-slate dark:prose-invert prose-ol:list-decimal prose-ul:list-disc prose-li:marker:text-primary w-full max-w-none font-sans',
-			'[&_li_p]:m-0!'
+			'min-h-0 flex-1',
+			'flex flex-col rounded-lg border border-border bg-card',
+			'm-1.5 overflow-hidden transition-[color,box-shadow] has-focus-visible:border-ring has-focus-visible:ring-[3px]  has-focus-visible:ring-ring/50'
 		)}
-		data-slot="input-group-control"
 	>
-		<div class="min-w-0 wrap-anywhere!" bind:this={editorContainer}></div>
+		<div class="min-h-0 flex-1 overflow-auto">
+			<div
+				class={cn(
+					'prose prose-base w-full max-w-none px-4 font-sans prose-slate dark:prose-invert prose-ol:list-decimal prose-ul:list-disc prose-li:marker:text-primary',
+					'[&_li_p]:m-0!'
+				)}
+			>
+				<div class="h-full min-w-0 wrap-anywhere!" bind:this={editorContainer}></div>
+			</div>
+		</div>
+		<div
+			class="flex w-full shrink-0 items-center justify-between border-t bg-muted/30 px-6 py-2 text-xs"
+		>
+			{#if saving}
+				<div class="flex items-center gap-2 text-muted-foreground" in:fade>
+					<span class="size-1.5 animate-pulse rounded-full bg-amber-500"></span>
+					<span class="font-medium tracking-wider">Saving</span>
+				</div>
+			{:else}
+				<div class="flex items-center gap-2 text-muted-foreground">
+					<span class="size-1.5 rounded-full bg-emerald-500/80"></span>
+					<span class="font-medium tracking-wider">Saved</span>
+				</div>
+			{/if}
+			<Button
+				size="xs"
+				variant="ghost"
+				class="gap-1.5 text-muted-foreground hover:text-primary"
+				onclick={async () => {}}
+			>
+				<SparklesIcon class="size-3.5" />
+				Complete
+			</Button>
+		</div>
 	</div>
 </div>
-
-<!-- {#if !markdownMap.draft}
-	<div class="my-2">
-		<Button
-			onclick={async () => {
-				markdownMap = await createMarkdown({
-					echoId,
-					content: null,
-					type: 'draft'
-				});
-			}}
-			disabled={$effect.pending() > 0}
-		>
-			Create Draft</Button
-		>
-	</div>
-{/if} -->

@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { cn, formatSecondsToMMSS } from '$lib/utils';
-	import { Play, Pause, RotateCcw, Plus, Minus, Scissors, Settings2 } from '@lucide/svelte';
+	import { Play, Pause, RotateCcw, Plus, Minus, UndoDot, ArrowUpRight } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import Toggle, { toggleVariants } from '$lib/components/ui/toggle/toggle.svelte';
-	// import { createAudioGroup } from '$lib/remote/echo/data.remote';
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
 	import { getYtContext } from './yt-keys';
 	import { Slider as YtSlider } from './yt-slider/index.js';
@@ -12,18 +11,9 @@
 	interface Props {
 		sliderValues: TSLIDER_VALUES;
 		progressValue: number;
-		echoId: string;
-
-		// workaround
-		selectedGroupId: string | undefined;
 	}
 
-	let {
-		sliderValues = $bindable(),
-		progressValue = $bindable(),
-		echoId,
-		selectedGroupId = $bindable(undefined)
-	}: Props = $props();
+	let { sliderValues = $bindable(), progressValue = $bindable() }: Props = $props();
 
 	const { getPlayer, getReady } = getYtContext();
 
@@ -39,7 +29,6 @@
 	const rateListForward = [1.25, 1.5, 2];
 
 	let playBackRate = $state(1);
-	let slideExtend = $state(false);
 
 	function clickPlaybackRate(
 		e: MouseEvent & {
@@ -160,53 +149,33 @@
 	}
 </script>
 
-<div
-	class={cn(
-		'relative mb-1 flex w-full items-center gap-2.5 pt-2 pb-4',
-		slideExtend ? 'w-[150%]' : 'w-full'
-	)}
->
-	{#key slideExtend}
-		<YtSlider
-			type="multiple"
-			bind:value={sliderValues}
-			max={duration}
-			step={1}
-			class="z-5 h-13 flex-1 self-center"
-			format={formatSecondsToMMSS}
-			tickLabel={progressValue}
-			seek={(v) => {
-				seekTo(v, true);
-			}}
-			onValueCommit={(v) => {
-				// if (v[0] > progressValue) {
-				// seekTo(v[0], true);
-				// }
-			}}
-		/>
-	{/key}
+<div class={cn('relative mb-1 flex w-full items-center gap-2.5 px-2')}>
+	<YtSlider
+		type="multiple"
+		bind:value={sliderValues}
+		max={duration}
+		step={1}
+		class="z-5 h-13 flex-1 self-center"
+		format={formatSecondsToMMSS}
+		tickLabel={progressValue}
+		seek={(v) => {
+			seekTo(v, true);
+		}}
+		onValueCommit={(v) => {
+			// if (v[0] > progressValue) {
+			// seekTo(v[0], true);
+			// }
+		}}
+	/>
 
 	<div>
-		<Button
-			size="sm"
-			variant="ghost"
-			onclick={() => {
-				slideExtend = !slideExtend;
-			}}
-		>
-			<span class="text-xs tabular-nums">
-				{formatSecondsToMMSS(Math.floor(progressValue))}
-			</span>
-		</Button>
+		<span class="text-xs tabular-nums">
+			{formatSecondsToMMSS(Math.floor(progressValue))}
+		</span>
 	</div>
-
-	<!-- <div class="absolute bottom-0 left-0 z-5 w-full translate-x-1/2"> -->
-	<!-- 	<Button size="icon-sm" variant="ghost"> -->
-	<!-- 		<Forward /> -->
-	<!-- 	</Button> -->
-	<!-- </div> -->
 </div>
 
+<!-- TODO: add tooltip or title so that user can hover to know what the button is  -->
 <div class="flex flex-col items-center rounded-xl bg-card px-4 py-2 md:py-2">
 	<div class="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
 		<button
@@ -262,6 +231,19 @@
 						<Plus />
 					</Button>
 				</ButtonGroup.Root>
+
+				<Button
+					class=""
+					type="button"
+					variant="ghost"
+					onclick={() => {
+						playeVideo(true);
+					}}
+					disabled={!isReady}
+				>
+					<RotateCcw />
+				</Button>
+
 				{#if playState !== window.YT.PlayerState.PLAYING}
 					<Button
 						class=""
@@ -287,58 +269,29 @@
 						<Pause />
 					</Button>
 				{/if}
-
 				<Button
 					class=""
 					type="button"
 					variant="ghost"
 					onclick={() => {
-						playeVideo(true);
+						playBackForth(true);
 					}}
-					disabled={!isReady}
 				>
-					<RotateCcw />
+					<UndoDot />
 				</Button>
-				<!-- <Button -->
-				<!-- 	class="" -->
-				<!-- 	type="button" -->
-				<!-- 	variant="ghost" -->
-				<!-- 	onclick={() => { -->
-				<!-- 		playBackForth(true); -->
-				<!-- 	}} -->
-				<!-- > -->
-				<!-- 	<UndoDot /> -->
-				<!-- </Button> -->
-				<!-- <Button -->
-				<!-- 	class="" -->
-				<!-- 	type="button" -->
-				<!-- 	variant="ghost" -->
-				<!-- 	onclick={() => { -->
-				<!-- 		if (player?.getCurrentTime() !== undefined && duration) { -->
-				<!-- 			const seekEndValue = Math.min(Math.floor(player?.getCurrentTime()) + 5, duration); -->
-				<!-- 			sliderValues = [sliderValues[0], seekEndValue]; -->
-				<!-- 		} -->
-				<!-- 	}} -->
-				<!-- 	disabled={!isReady} -->
-				<!-- > -->
-				<!-- 	<ArrowUpRight /> -->
-				<!-- </Button> -->
-
 				<Button
 					class=""
 					type="button"
 					variant="ghost"
-					onclick={async () => {
-						// const result = await createAudioGroup({
-						// 	echoId,
-						// 	start: $state.snapshot(sliderValues[0]),
-						// 	end: $state.snapshot(sliderValues[1])
-						// });
-						// selectedGroupId = `${result[0].id}`;
+					onclick={() => {
+						if (player?.getCurrentTime() !== undefined && duration) {
+							const seekEndValue = Math.min(Math.floor(player?.getCurrentTime()) + 5, duration);
+							sliderValues = [sliderValues[0], seekEndValue];
+						}
 					}}
 					disabled={!isReady}
 				>
-					<Scissors />
+					<ArrowUpRight />
 				</Button>
 
 				<ButtonGroup.Root>
@@ -371,22 +324,6 @@
 						<Plus />
 					</Button>
 				</ButtonGroup.Root>
-
-				<Button
-					class=""
-					size="icon-sm"
-					type="button"
-					variant="ghost"
-					onclick={() => {
-						if (!duration || !player) return;
-						const addValue = Math.min(player.getCurrentTime() + 2, duration);
-						sliderValues[0] = player.getCurrentTime();
-						sliderValues[1] = addValue;
-					}}
-					disabled={!isReady}
-				>
-					<Settings2 />
-				</Button>
 			</div>
 		</div>
 

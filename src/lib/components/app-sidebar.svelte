@@ -7,25 +7,25 @@
 				url: '#',
 				items: [
 					{
-						title: 'Installation',
-						url: '#'
+						title: 'Home',
+						url: '/'
 					},
 					{
-						title: 'Project Structure',
-						url: '#'
+						title: 'Video',
+						url: '/video'
 					}
 				]
 			},
 			{
-				title: 'Build Your Application',
+				title: 'Video',
 				url: '#',
 				items: [
 					{
-						title: 'Routing',
+						title: 'video-title-1',
 						url: '1'
 					},
 					{
-						title: 'Data Fetching',
+						title: 'video-title-2',
 						url: '2'
 					}
 				]
@@ -47,6 +47,7 @@
 	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import type { ComponentProps } from 'svelte';
+	import { getTodayGoal, getVideoSessions } from '$lib/remote/video.remote';
 
 	let { ref = $bindable(null), ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
 
@@ -56,6 +57,11 @@
 
 	const session = authClient.useSession();
 	const user = $derived($session.data?.user);
+
+	let list = $derived(await getVideoSessions());
+	let todayGoal = $derived(await getTodayGoal());
+
+	// TODO: add delete DropdownMenu: see bun x shadcn-svelte@latest add sidebar-07
 </script>
 
 <Sidebar.Root bind:ref variant="floating" {...restProps}>
@@ -71,7 +77,7 @@
 								<GalleryVerticalEndIcon class="size-4" />
 							</div>
 							<div class="flex flex-col gap-0.5 leading-none">
-								<span class="font-medium">Documentation</span>
+								<span class="font-medium">Ludio</span>
 								<span class="">v1.0.0</span>
 							</div>
 						</a>
@@ -83,30 +89,63 @@
 	<Sidebar.Content>
 		<Sidebar.Group>
 			<Sidebar.Menu class="gap-2">
-				{#each data.navMain as item (item.title)}
-					<Sidebar.MenuItem>
-						<Sidebar.MenuButton>
-							{#snippet child({ props })}
-								<a href={item.url} class="font-medium" {...props}>
-									{item.title}
-								</a>
-							{/snippet}
-						</Sidebar.MenuButton>
-						{#if item.items?.length}
-							<Sidebar.MenuSub class="ms-0 border-s-0 px-1.5">
-								{#each item.items as subItem (subItem.title)}
-									<Sidebar.MenuSubItem>
-										<Sidebar.MenuSubButton isActive={pathname === `/video/${subItem.url}`}>
-											{#snippet child({ props })}
-												<a href={`/video/${subItem.url}`} {...props}>{subItem.title}</a>
-											{/snippet}
-										</Sidebar.MenuSubButton>
-									</Sidebar.MenuSubItem>
-								{/each}
-							</Sidebar.MenuSub>
-						{/if}
-					</Sidebar.MenuItem>
-				{/each}
+				<Sidebar.MenuItem>
+					<Sidebar.GroupLabel>Today</Sidebar.GroupLabel>
+					<Sidebar.MenuSub class="ms-0 border-s-0 px-1.5">
+						<Sidebar.GroupLabel class="tabular-nums"
+							>Today ({todayGoal.today.length})</Sidebar.GroupLabel
+						>
+						{#each todayGoal.today as item (item.title)}
+							<Sidebar.MenuSubItem>
+								<Sidebar.MenuSubButton isActive={pathname === `/video/${item.id}`}>
+									{#snippet child({ props })}
+										<a href={`/video/${item.id}`} {...props}>
+											<span>
+												{item.title}
+											</span>
+										</a>
+									{/snippet}
+								</Sidebar.MenuSubButton>
+							</Sidebar.MenuSubItem>
+						{/each}
+					</Sidebar.MenuSub>
+					<Sidebar.MenuSub class="ms-0 border-s-0 px-1.5">
+						<Sidebar.GroupLabel class="tabular-nums"
+							>Review ({todayGoal.done.length})</Sidebar.GroupLabel
+						>
+						{#each todayGoal.done as item (item.title)}
+							<Sidebar.MenuSubItem>
+								<Sidebar.MenuSubButton isActive={pathname === `/video/${item.id}`}>
+									{#snippet child({ props })}
+										<a href={`/video/${item.id}`} {...props}>
+											<span>
+												{item.title}
+											</span>
+										</a>
+									{/snippet}
+								</Sidebar.MenuSubButton>
+							</Sidebar.MenuSubItem>
+						{/each}
+					</Sidebar.MenuSub>
+				</Sidebar.MenuItem>
+				<Sidebar.MenuItem>
+					<Sidebar.GroupLabel>Videos</Sidebar.GroupLabel>
+					<Sidebar.MenuSub class="ms-0 border-s-0 px-1.5">
+						{#each list as item (item.title)}
+							<Sidebar.MenuSubItem>
+								<Sidebar.MenuSubButton isActive={pathname === `/video/${item.id}`}>
+									{#snippet child({ props })}
+										<a href={`/video/${item.id}`} {...props}>
+											<span>
+												{item.title}
+											</span>
+										</a>
+									{/snippet}
+								</Sidebar.MenuSubButton>
+							</Sidebar.MenuSubItem>
+						{/each}
+					</Sidebar.MenuSub>
+				</Sidebar.MenuItem>
 			</Sidebar.Menu>
 		</Sidebar.Group>
 	</Sidebar.Content>

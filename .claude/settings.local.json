@@ -4,7 +4,8 @@
       "Bash(bun run *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(npx svelte-check *)"
+      "Bash(npx svelte-check *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

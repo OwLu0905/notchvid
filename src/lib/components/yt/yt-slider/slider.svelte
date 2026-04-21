@@ -304,7 +304,7 @@
 					<div
 						data-thumb-order={thumb}
 						data-slot="slider-thumb-label"
-						class="absolute top-4 left-0 w-fit -translate-x-1/3 rounded bg-background/80 px-1.5 py-0.5 text-xs font-medium text-white transition-all duration-100 ease-linear"
+						class="absolute top-4 left-0 w-fit -translate-x-1/3 rounded bg-background/80 px-1.5 py-0.5 text-xs font-medium text-foreground transition-all duration-100 ease-linear"
 					>
 						{format ? format(value[thumb]) : value[thumb]}
 					</div>

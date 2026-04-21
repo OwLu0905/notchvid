@@ -18,6 +18,9 @@ const config = {
 		adapter: adapter(),
 		alias: {
 			'@/*': './path/to/lib/*'
+		},
+		experimental: {
+			remoteFunctions: true
 		}
 	}
 };

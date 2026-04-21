@@ -10,9 +10,19 @@ import { slashCommandKey } from './plugin/slash-command-plugin';
 import { createCustomKeyMapPlugin } from './plugin/yt-keymap-plugin';
 import { DOMParser } from 'prosemirror-model';
 import { formatSecondsToMMSS } from '$lib/utils';
+import * as z from 'zod';
+
+const prosemirrorDocs = z
+	.object({
+		type: z.literal('doc'),
+		content: z.array(z.any()).optional()
+	})
+	.nullable();
+
+export type ProsemirrorDocData = z.infer<typeof prosemirrorDocs>;
 
 type ProseViewOptions = {
-	onUpdate: (data: unknown) => void;
+	onUpdate: (data: ProsemirrorDocData) => void;
 	onCtrlP: () => void;
 	onCtrlN: () => void;
 	onCtrlM: () => void;
@@ -57,7 +67,7 @@ export class ProseView {
 	view: EditorView | null = $state.raw(null);
 	state: EditorState | null = $state.raw(null);
 	schema = editorSchema;
-	#onUpdate?: (data: unknown) => void;
+	#onUpdate?: (data: ProsemirrorDocData) => void;
 	#onCtrlP?: () => void;
 	#onCtrlN?: () => void;
 	#onCtrlM?: () => void;

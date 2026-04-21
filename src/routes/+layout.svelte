@@ -8,6 +8,7 @@
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
+	import Loader from '$lib/components/Loader.svelte';
 	let { children, data } = $props();
 
 	let open = $derived(data.sidebar);
@@ -23,10 +24,10 @@
 
 <ModeWatcher />
 
-<Sidebar.Provider style="--sidebar-width: 19rem;">
+<Sidebar.Provider style="--sidebar-width: 19rem;" class="h-svh overflow-hidden" bind:open>
 	{#if !user}
 		{#if isPending}
-			<div class="flex w-full items-center justify-center">loading...</div>
+			<div class="flex w-full items-center justify-center"><Loader /></div>
 		{:else}
 			{@render children?.()}
 		{/if}
@@ -48,7 +49,7 @@
 					</Breadcrumb.List>
 				</Breadcrumb.Root>
 			</header>
-			<div class="flex flex-1 flex-col gap-4 p-4 pt-0">
+			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 pt-0">
 				{@render children?.()}
 			</div>
 		</Sidebar.Inset>
