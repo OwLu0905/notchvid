@@ -175,7 +175,6 @@
 	</div>
 </div>
 
-<!-- TODO: add tooltip or title so that user can hover to know what the button is  -->
 <div class="flex flex-col items-center rounded-xl bg-card px-4 py-2 md:py-2">
 	<div class="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2">
 		<button

@@ -39,6 +39,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	// import * as Avatar from '$lib/components/ui/avatar/index.js';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
@@ -47,7 +48,10 @@
 	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import type { ComponentProps } from 'svelte';
-	import { getTodayGoal, getVideoSessions } from '$lib/remote/video.remote';
+	import { deleteVideoSession, getTodayGoal, getVideoSessions } from '$lib/remote/video.remote';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import { PlusIcon } from '@lucide/svelte';
 
 	let { ref = $bindable(null), ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
 
@@ -61,7 +65,19 @@
 	let list = $derived(await getVideoSessions());
 	let todayGoal = $derived(await getTodayGoal());
 
-	// TODO: add delete DropdownMenu: see bun x shadcn-svelte@latest add sidebar-07
+	let deleteTarget = $state<{ id: string; title: string } | null>(null);
+	let isDeleting = $state(false);
+
+	async function confirmDelete() {
+		if (!deleteTarget) return;
+		isDeleting = true;
+		try {
+			await deleteVideoSession(deleteTarget.id);
+			deleteTarget = null;
+		} finally {
+			isDeleting = false;
+		}
+	}
 </script>
 
 <Sidebar.Root bind:ref variant="floating" {...restProps}>
@@ -87,6 +103,20 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 	<Sidebar.Content>
+		<Sidebar.Group>
+			<Sidebar.Menu class="ms-0 border-s-0 px-1.5">
+				<Sidebar.MenuItem>
+					<Sidebar.MenuButton isActive={pathname === `/video`}>
+						{#snippet child({ props })}
+							<a href={`/video`} {...props}>
+								<PlusIcon />
+								<span> New Video </span>
+							</a>
+						{/snippet}
+					</Sidebar.MenuButton>
+				</Sidebar.MenuItem>
+			</Sidebar.Menu>
+		</Sidebar.Group>
 		<Sidebar.Group>
 			<Sidebar.Menu class="gap-2">
 				<Sidebar.MenuItem>
@@ -128,24 +158,47 @@
 						{/each}
 					</Sidebar.MenuSub>
 				</Sidebar.MenuItem>
-				<Sidebar.MenuItem>
-					<Sidebar.GroupLabel>Videos</Sidebar.GroupLabel>
-					<Sidebar.MenuSub class="ms-0 border-s-0 px-1.5">
-						{#each list as item (item.title)}
-							<Sidebar.MenuSubItem>
-								<Sidebar.MenuSubButton isActive={pathname === `/video/${item.id}`}>
-									{#snippet child({ props })}
-										<a href={`/video/${item.id}`} {...props}>
-											<span>
-												{item.title}
-											</span>
-										</a>
-									{/snippet}
-								</Sidebar.MenuSubButton>
-							</Sidebar.MenuSubItem>
-						{/each}
-					</Sidebar.MenuSub>
-				</Sidebar.MenuItem>
+			</Sidebar.Menu>
+		</Sidebar.Group>
+
+		<Sidebar.Group>
+			<Sidebar.GroupLabel>Videos</Sidebar.GroupLabel>
+			<Sidebar.Menu class="ms-0 border-s-0 px-1.5">
+				{#each list as item (item.id)}
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton isActive={pathname === `/video/${item.id}`}>
+							{#snippet child({ props })}
+								<a href={`/video/${item.id}`} {...props}>
+									<span>
+										{item.title}
+									</span>
+								</a>
+							{/snippet}
+						</Sidebar.MenuButton>
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								{#snippet child({ props })}
+									<Sidebar.MenuAction showOnHover {...props}>
+										<EllipsisIcon />
+										<span class="sr-only">More</span>
+									</Sidebar.MenuAction>
+								{/snippet}
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content
+								class="w-56 rounded-lg"
+								side={sidebar.isMobile ? 'bottom' : 'right'}
+								align={sidebar.isMobile ? 'end' : 'start'}
+							>
+								<DropdownMenu.Item
+									onSelect={() => (deleteTarget = { id: item.id, title: item.title })}
+								>
+									<Trash2Icon class="text-muted-foreground" />
+									<span>Delete</span>
+								</DropdownMenu.Item>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+					</Sidebar.MenuItem>
+				{/each}
 			</Sidebar.Menu>
 		</Sidebar.Group>
 	</Sidebar.Content>
@@ -177,10 +230,6 @@
 					>
 						<DropdownMenu.Label class="p-0 font-normal">
 							<div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-								<!-- <Avatar.Root class="size-8 rounded-lg">
-									<Avatar.Image src={user?.image} alt={user?.name} />
-									<Avatar.Fallback class="rounded-lg">CN</Avatar.Fallback>
-								</Avatar.Root> -->
 								<div class="grid flex-1 text-start text-sm leading-tight">
 									<span class="truncate font-medium">{user?.name}</span>
 									<span class="truncate text-xs">{user?.email}</span>
@@ -215,3 +264,26 @@
 		</Sidebar.Menu>
 	</Sidebar.Footer>
 </Sidebar.Root>
+
+<AlertDialog.Root
+	open={deleteTarget !== null}
+	onOpenChange={(open) => {
+		if (!open) deleteTarget = null;
+	}}
+>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Delete this video?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will permanently delete <span class="font-medium">{deleteTarget?.title}</span> and all of
+				its notes. This action cannot be undone.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isDeleting}>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action variant="destructive" disabled={isDeleting} onclick={confirmDelete}>
+				{isDeleting ? 'Deleting...' : 'Delete'}
+			</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>

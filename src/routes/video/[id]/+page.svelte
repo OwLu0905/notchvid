@@ -49,6 +49,7 @@
 			<ProsemirrorMarkdown
 				{videoId}
 				content={video.markdown?.content}
+				status={video.video?.status}
 				currentTime={progressValue}
 				{playTimeBlock}
 				{playPause}

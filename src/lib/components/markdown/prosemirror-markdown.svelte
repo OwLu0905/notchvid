@@ -1,24 +1,33 @@
 <script lang="ts">
+	import { fade } from 'svelte/transition';
 	import { ProseView, type ProsemirrorDocData } from './prose-view.svelte';
 	import BubbleMenuView from './bubble-menu-view.svelte';
 	import { cn } from '$lib/utils';
-
 	import SlashCommandView from './slash-command-view.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { onDestroy, untrack } from 'svelte';
-	import { updateVideoMarkdown } from '$lib/remote/video.remote';
+	import { markVideoDone, updateVideoMarkdown } from '$lib/remote/video.remote';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
-	import { fade } from 'svelte/transition';
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 
 	interface Props {
 		videoId: string;
 		content: unknown;
+		status: 'done' | 'unfinished';
 		currentTime: number;
 		playTimeBlock: (v: number) => void;
 		playPause: () => void;
 		playBackForth: (b: boolean) => void;
 	}
-	let { videoId, content, currentTime, playTimeBlock, playPause, playBackForth }: Props = $props();
+	let {
+		videoId,
+		content,
+		status: initialStatus,
+		currentTime,
+		playTimeBlock,
+		playPause,
+		playBackForth
+	}: Props = $props();
 
 	let editor: ProseView | null = $state(null);
 	let editorContainer: HTMLDivElement;
@@ -26,6 +35,8 @@
 	let lastId: string | null = null;
 
 	let saving = $state(false);
+
+	let status = $derived(initialStatus);
 
 	const debouncedSave = (cb: () => void, delay = 600) => {
 		if (saveTimeoutId) {
@@ -92,7 +103,7 @@
 	<div
 		class={cn(
 			'min-h-0 flex-1',
-			'flex flex-col rounded-lg border border-border bg-card',
+			'flex flex-col rounded-lg border border-border bg-sidebar',
 			'm-1.5 overflow-hidden transition-[color,box-shadow] has-focus-visible:border-ring has-focus-visible:ring-[3px]  has-focus-visible:ring-ring/50'
 		)}
 	>
@@ -103,7 +114,7 @@
 					'[&_li_p]:m-0!'
 				)}
 			>
-				<div class="h-full min-w-0 wrap-anywhere!" bind:this={editorContainer}></div>
+				<div class="min-w-0 wrap-anywhere!" bind:this={editorContainer}></div>
 			</div>
 		</div>
 		<div
@@ -120,15 +131,25 @@
 					<span class="font-medium tracking-wider">Saved</span>
 				</div>
 			{/if}
-			<Button
-				size="xs"
-				variant="ghost"
-				class="gap-1.5 text-muted-foreground hover:text-primary"
-				onclick={async () => {}}
-			>
-				<SparklesIcon class="size-3.5" />
-				Complete
-			</Button>
+			{#if status === 'unfinished'}
+				<Button
+					size="xs"
+					variant="ghost"
+					class="gap-1.5 text-muted-foreground hover:text-primary"
+					onclick={async () => {
+						await markVideoDone(videoId);
+						status = 'done';
+					}}
+				>
+					<SparklesIcon class="size-3.5" />
+					Complete
+				</Button>
+			{:else}
+				<div class="flex gap-1.5 text-muted-foreground hover:text-primary">
+					<CircleCheckIcon class="size-3.5" />
+					Done
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

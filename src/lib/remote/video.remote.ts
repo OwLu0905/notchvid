@@ -181,5 +181,7 @@ export const markVideoDone = command(videoIdInput, async (videoId) => {
 		.returning();
 
 	await getVideoSessions().refresh();
+	await getTodayGoal().refresh();
+
 	return updated;
 });
