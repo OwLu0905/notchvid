@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "ludio",
+      "name": "morsel",
       "dependencies": {
         "@neondatabase/serverless": "^1.1.0",
         "better-auth": "^1.6.5",

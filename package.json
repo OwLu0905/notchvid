@@ -1,5 +1,5 @@
 {
-	"name": "ludio",
+	"name": "morsel",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
@@ -15,8 +15,8 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"cf:dev": "bun run build && wrangler pages dev .svelte-kit/cloudflare",
-		"cf:deploy": "bun run build && wrangler pages deploy .svelte-kit/cloudflare --project-name ludio",
-		"cf:tail": "wrangler pages deployment tail --project-name ludio"
+		"cf:deploy": "bun run build && wrangler pages deploy .svelte-kit/cloudflare --project-name morsel",
+		"cf:tail": "wrangler pages deployment tail --project-name morsel"
 	},
 	"devDependencies": {
 		"@fontsource-variable/inter": "^5.2.8",

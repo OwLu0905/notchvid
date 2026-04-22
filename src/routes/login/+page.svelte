@@ -11,7 +11,7 @@
 			>
 				<GalleryVerticalEndIcon class="size-4" />
 			</div>
-			Ludio
+			morsel
 		</a>
 		<LoginForm />
 	</div>
