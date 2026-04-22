@@ -3,8 +3,6 @@ import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import * as z from 'zod';
 
-import { db } from '$lib/server/database';
-import { auth } from '$lib/server/auth';
 import {
 	videoMarkdown,
 	videoSessions,
@@ -32,7 +30,10 @@ const updateMarkdownInput = z.object({
 
 const videoIdInput = z.uuid();
 
-const getSession = query(() => auth.api.getSession({ headers: getRequestEvent().request.headers }));
+const getSession = query(() => {
+	const event = getRequestEvent();
+	return event.locals.auth.api.getSession({ headers: event.request.headers });
+});
 
 async function requireAuth() {
 	const user = (await getSession())?.user;
@@ -41,6 +42,7 @@ async function requireAuth() {
 }
 
 async function requireOwnedSession(videoId: string, userId: string) {
+	const { db } = getRequestEvent().locals;
 	const rows = await db
 		.select({ id: videoSessions.id })
 		.from(videoSessions)
@@ -53,6 +55,7 @@ async function requireOwnedSession(videoId: string, userId: string) {
 
 export const createVideoSession = command(createVideoInput, async (data) => {
 	const user = await requireAuth();
+	const { db } = getRequestEvent().locals;
 
 	const [session] = await db
 		.insert(videoSessions)
@@ -73,6 +76,7 @@ export const createVideoSession = command(createVideoInput, async (data) => {
 
 export const getVideoSessions = query(async () => {
 	const user = await requireAuth();
+	const { db } = getRequestEvent().locals;
 
 	return db
 		.select()
@@ -88,6 +92,7 @@ export type TodayGoal = {
 
 export const getTodayGoal = query(async (): Promise<TodayGoal> => {
 	const user = await requireAuth();
+	const { db } = getRequestEvent().locals;
 
 	const startOfDay = new Date();
 	startOfDay.setHours(0, 0, 0, 0);
@@ -127,6 +132,7 @@ export const getVideoWithMarkdown = query(
 	videoIdInput,
 	async (videoId): Promise<VideoWithMarkdown> => {
 		const user = await requireAuth();
+		const { db } = getRequestEvent().locals;
 
 		const rows = await db
 			.select()
@@ -145,6 +151,7 @@ export const getVideoWithMarkdown = query(
 export const updateVideoMarkdown = command(updateMarkdownInput, async ({ videoId, content }) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
+	const { db } = getRequestEvent().locals;
 
 	const [updated] = await db
 		.update(videoMarkdown)
@@ -163,6 +170,7 @@ export const updateVideoMarkdown = command(updateMarkdownInput, async ({ videoId
 export const deleteVideoSession = command(videoIdInput, async (videoId) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
+	const { db } = getRequestEvent().locals;
 
 	await db.delete(videoSessions).where(eq(videoSessions.id, videoId));
 
@@ -173,6 +181,7 @@ export const deleteVideoSession = command(videoIdInput, async (videoId) => {
 export const markVideoDone = command(videoIdInput, async (videoId) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
+	const { db } = getRequestEvent().locals;
 
 	const [updated] = await db
 		.update(videoSessions)

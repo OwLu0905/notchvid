@@ -2,24 +2,33 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
-import { db } from './database';
-import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private';
-
 import * as schema from '$lib/server/database/schema/auth';
+import type { Db } from './database';
 
-export const auth = betterAuth({
-	database: drizzleAdapter(db, {
-		provider: 'pg',
-		schema: {
-			...schema
-		}
-	}),
-	socialProviders: {
-		google: {
-			prompt: 'select_account',
-			clientId: GOOGLE_CLIENT_ID,
-			clientSecret: GOOGLE_CLIENT_SECRET
-		}
-	},
-	plugins: [sveltekitCookies(getRequestEvent)]
-});
+export type AuthEnv = {
+	BETTER_AUTH_SECRET: string;
+	BETTER_AUTH_URL: string;
+	GOOGLE_CLIENT_ID: string;
+	GOOGLE_CLIENT_SECRET: string;
+};
+
+export function createAuth(db: Db, env: AuthEnv) {
+	return betterAuth({
+		secret: env.BETTER_AUTH_SECRET,
+		baseURL: env.BETTER_AUTH_URL,
+		database: drizzleAdapter(db, {
+			provider: 'pg',
+			schema: { ...schema }
+		}),
+		socialProviders: {
+			google: {
+				prompt: 'select_account',
+				clientId: env.GOOGLE_CLIENT_ID,
+				clientSecret: env.GOOGLE_CLIENT_SECRET
+			}
+		},
+		plugins: [sveltekitCookies(getRequestEvent)]
+	});
+}
+
+export type Auth = ReturnType<typeof createAuth>;

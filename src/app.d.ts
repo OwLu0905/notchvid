@@ -27,10 +27,20 @@ declare global {
 				name: string;
 				image?: string | null | undefined | undefined;
 			} | null;
+			db: import('$lib/server/database').Db;
+			auth: import('$lib/server/auth').Auth;
 		}
 		// interface PageData {}
 		// interface PageState {}
-		// interface Platform {}
+		interface Platform {
+			env: {
+				DATABASE_URL: string;
+				BETTER_AUTH_SECRET: string;
+				BETTER_AUTH_URL: string;
+				GOOGLE_CLIENT_ID: string;
+				GOOGLE_CLIENT_SECRET: string;
+			};
+		}
 	}
 }
 

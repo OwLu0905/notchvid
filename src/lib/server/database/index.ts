@@ -1,11 +1,9 @@
-import { DATABASE_URL } from '$env/static/private';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 
-// const pool = new Pool({
-// 	connectionString: DATABASE_URL
-// });
+export function createDb(databaseUrl: string) {
+	const sql = neon(databaseUrl);
+	return drizzle({ client: sql });
+}
 
-
-const sql = neon(DATABASE_URL!);
-export const db = drizzle({ client: sql });
+export type Db = ReturnType<typeof createDb>;
