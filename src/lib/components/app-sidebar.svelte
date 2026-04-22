@@ -93,7 +93,7 @@
 								<GalleryVerticalEndIcon class="size-4" />
 							</div>
 							<div class="flex flex-col gap-0.5 leading-none">
-								<span class="font-medium">Morsel</span>
+								<span class="font-medium">Notchvid</span>
 								<span class="">v1.0.0</span>
 							</div>
 						</a>

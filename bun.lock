@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "morsel",
+      "name": "notchvid",
       "dependencies": {
         "@neondatabase/serverless": "^1.1.0",
         "better-auth": "^1.6.5",
