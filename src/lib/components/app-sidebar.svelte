@@ -45,13 +45,13 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
 	import GalleryVerticalEndIcon from '@lucide/svelte/icons/gallery-vertical-end';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
-	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import type { ComponentProps } from 'svelte';
 	import { deleteVideoSession, getTodayGoal, getVideoSessions } from '$lib/remote/video.remote';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import { PlusIcon } from '@lucide/svelte';
+	import { PlusIcon, SunMoonIcon } from '@lucide/svelte';
+	import ModeButton from './mode-button.svelte';
 
 	let { ref = $bindable(null), ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
 
@@ -238,9 +238,10 @@
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						<DropdownMenu.Group>
-							<DropdownMenu.Item>
-								<BadgeCheckIcon />
-								Account
+							<DropdownMenu.Item closeOnSelect={false}>
+								<SunMoonIcon />
+								Dark mode
+								<ModeButton variant="switch" />
 							</DropdownMenu.Item>
 						</DropdownMenu.Group>
 						<DropdownMenu.Separator />

@@ -175,6 +175,8 @@ export const deleteVideoSession = command(videoIdInput, async (videoId) => {
 	await db.delete(videoSessions).where(eq(videoSessions.id, videoId));
 
 	await getVideoSessions().refresh();
+	await getTodayGoal().refresh();
+
 	return { videoId };
 });
 
