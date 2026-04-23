@@ -1,6 +1,7 @@
 import { command, getRequestEvent, query } from '$app/server';
 import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
+import { fromZonedTime } from 'date-fns-tz';
 import * as z from 'zod';
 
 import {
@@ -10,10 +11,13 @@ import {
 	type VideoSession
 } from '$lib/server/database/schema/video';
 
+const tzField = z.string().min(1);
+
 const createVideoInput = z.object({
 	title: z.string().min(1),
 	url: z.string(),
-	thumbnailUrl: z.string().url().optional()
+	thumbnailUrl: z.string().url().optional(),
+	tz: tzField
 });
 
 const prosemirrorDoc = z
@@ -29,6 +33,13 @@ const updateMarkdownInput = z.object({
 });
 
 const videoIdInput = z.uuid();
+
+const videoIdWithTzInput = z.object({
+	videoId: z.uuid(),
+	tz: tzField
+});
+
+const todayGoalInput = z.object({ tz: tzField });
 
 const getSession = query(() => {
 	const event = getRequestEvent();
@@ -69,7 +80,7 @@ export const createVideoSession = command(createVideoInput, async (data) => {
 
 	await db.insert(videoMarkdown).values({ videoId: session.id, content: null });
 	await getVideoSessions().refresh();
-	await getTodayGoal().refresh();
+	await getTodayGoal({ tz: data.tz }).refresh();
 
 	return session.id;
 });
@@ -90,14 +101,21 @@ export type TodayGoal = {
 	today: VideoSession[];
 };
 
-export const getTodayGoal = query(async (): Promise<TodayGoal> => {
+export const getTodayGoal = query(todayGoalInput, async ({ tz }): Promise<TodayGoal> => {
 	const user = await requireAuth();
 	const { db } = getRequestEvent().locals;
 
-	const startOfDay = new Date();
-	startOfDay.setHours(0, 0, 0, 0);
-	const startOfTomorrow = new Date(startOfDay);
-	startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+	// Compute "today" in the client's IANA timezone, then convert the day boundary to UTC
+	// so the DB query works regardless of server TZ (Cloudflare Workers run in UTC).
+	const now = new Date();
+	const ymd = new Intl.DateTimeFormat('en-CA', {
+		timeZone: tz,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).format(now); // "YYYY-MM-DD"
+	const startOfDay = fromZonedTime(`${ymd}T00:00:00`, tz);
+	const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
 	const [done, today] = await Promise.all([
 		db
@@ -167,7 +185,7 @@ export const updateVideoMarkdown = command(updateMarkdownInput, async ({ videoId
 	return updated;
 });
 
-export const deleteVideoSession = command(videoIdInput, async (videoId) => {
+export const deleteVideoSession = command(videoIdWithTzInput, async ({ videoId, tz }) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
 	const { db } = getRequestEvent().locals;
@@ -175,12 +193,12 @@ export const deleteVideoSession = command(videoIdInput, async (videoId) => {
 	await db.delete(videoSessions).where(eq(videoSessions.id, videoId));
 
 	await getVideoSessions().refresh();
-	await getTodayGoal().refresh();
+	await getTodayGoal({ tz }).refresh();
 
 	return { videoId };
 });
 
-export const markVideoDone = command(videoIdInput, async (videoId) => {
+export const markVideoDone = command(videoIdWithTzInput, async ({ videoId, tz }) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
 	const { db } = getRequestEvent().locals;
@@ -192,7 +210,7 @@ export const markVideoDone = command(videoIdInput, async (videoId) => {
 		.returning();
 
 	await getVideoSessions().refresh();
-	await getTodayGoal().refresh();
+	await getTodayGoal({ tz }).refresh();
 
 	return updated;
 });

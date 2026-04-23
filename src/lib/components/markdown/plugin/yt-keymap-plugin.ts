@@ -6,31 +6,31 @@ interface KeyMapConfig {
 }
 
 interface CustomKeyMapOptions {
-	onCtrlP?: () => void;
-	onCtrlN?: () => void;
-	onCtrlM?: () => void;
+	onPlayPause?: () => void;
+	onSeekBack?: () => void;
+	onSeekForward?: () => void;
 }
 
 export function createCustomKeyMapPlugin(options: CustomKeyMapOptions) {
 	const customKeyMap: KeyMapConfig = {};
 
-	if (options.onCtrlP) {
-		customKeyMap['Ctrl-p'] = () => {
-			options.onCtrlP?.();
+	if (options.onPlayPause) {
+		customKeyMap['Alt-k'] = () => {
+			options.onPlayPause?.();
 			return true;
 		};
 	}
 
-	if (options.onCtrlN) {
-		customKeyMap['Ctrl-n'] = () => {
-			options.onCtrlN?.();
+	if (options.onSeekBack) {
+		customKeyMap['Alt-j'] = () => {
+			options.onSeekBack?.();
 			return true;
 		};
 	}
 
-	if (options.onCtrlM) {
-		customKeyMap['Ctrl-m'] = () => {
-			options.onCtrlM?.();
+	if (options.onSeekForward) {
+		customKeyMap['Alt-l'] = () => {
+			options.onSeekForward?.();
 			return true;
 		};
 	}

@@ -48,6 +48,7 @@
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import type { ComponentProps } from 'svelte';
 	import { deleteVideoSession, getTodayGoal, getVideoSessions } from '$lib/remote/video.remote';
+	import { getClientTz } from '$lib/utils/tz';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { PlusIcon, SunMoonIcon } from '@lucide/svelte';
@@ -62,8 +63,10 @@
 	const session = authClient.useSession();
 	const user = $derived($session.data?.user);
 
+	const tz = getClientTz();
+
 	let list = $derived(await getVideoSessions());
-	let todayGoal = $derived(await getTodayGoal());
+	let todayGoal = $derived(await getTodayGoal({ tz }));
 
 	let deleteTarget = $state<{ id: string; title: string } | null>(null);
 	let isDeleting = $state(false);
@@ -72,7 +75,7 @@
 		if (!deleteTarget) return;
 		isDeleting = true;
 		try {
-			await deleteVideoSession(deleteTarget.id);
+			await deleteVideoSession({ videoId: deleteTarget.id, tz });
 			deleteTarget = null;
 		} finally {
 			isDeleting = false;

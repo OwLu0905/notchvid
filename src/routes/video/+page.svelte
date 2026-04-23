@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as InputGroup from '$lib/components/ui/input-group/index.js';
-	import SearchIcon from '@lucide/svelte/icons/search-check';
+	import SearchIcon from '@lucide/svelte/icons/search';
 	import { superForm, defaults } from 'sveltekit-superforms';
 	import { zod4 } from 'sveltekit-superforms/adapters';
 	import { z } from 'zod';
@@ -12,6 +12,7 @@
 	import Loader from '$lib/components/Loader.svelte';
 	import { goto } from '$app/navigation';
 	import { createVideoSession } from '$lib/remote/video.remote';
+	import { getClientTz } from '$lib/utils/tz';
 
 	const ytDlpSchema = z.object({
 		url: z.url()
@@ -39,13 +40,14 @@
 			try {
 				if (step == 2) {
 					isLoading = true;
-					const vidioId = await createVideoSession({ title, url, thumbnailUrl });
+					const vidioId = await createVideoSession({ title, url, thumbnailUrl, tz: getClientTz() });
 					reset();
 					goto(`/video/${vidioId}`);
 				} else {
 					cancel();
 				}
 
+				// TODO: add shorts
 				// check v=?
 				const result = await form.validateForm({ update: true });
 				const checkUrl = new URL(result.data.url);
@@ -73,10 +75,10 @@
 		}
 	});
 
-	const { form: formData, enhance, delayed } = form;
+	const { form: formData, enhance } = form;
 </script>
 
-<div class="mx-auto w-full max-w-lg pt-20">
+<div class="mx-auto w-full max-w-lg pt-10">
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Video</Card.Title>
@@ -92,22 +94,28 @@
 			<form method="POST" use:enhance>
 				<Form.Field {form} name="url">
 					<Form.Control>
-						<Form.Label>Link (videos, shorts)</Form.Label>
-						<InputGroup.Root>
-							<InputGroup.Input
-								disabled={htmlIframe !== ''}
-								readonly={htmlIframe !== ''}
-								placeholder="https://www.youtube.com/watch?v="
-								bind:value={$formData.url}
-							/>
-							<InputGroup.Addon>
-								<SearchIcon />
-							</InputGroup.Addon>
-						</InputGroup.Root>
+						{#snippet children({ props })}
+							<Form.Label>
+								Link
+								<span class="font-normal text-muted-foreground">(videos, <del>shorts</del>)</span>
+							</Form.Label>
+							<InputGroup.Root>
+								<InputGroup.Input
+									disabled={htmlIframe !== ''}
+									readonly={htmlIframe !== ''}
+									placeholder="https://www.youtube.com/watch?v="
+									bind:value={$formData.url}
+									{...props}
+								/>
+								<InputGroup.Addon>
+									<SearchIcon />
+								</InputGroup.Addon>
+							</InputGroup.Root>
+						{/snippet}
 					</Form.Control>
 					<Form.FieldErrors />
 
-					<div class="flex justify-end gap-2">
+					<div class="mt-6 flex justify-end gap-2">
 						{#if htmlIframe === ''}
 							<Form.Button>Check</Form.Button>
 						{:else}

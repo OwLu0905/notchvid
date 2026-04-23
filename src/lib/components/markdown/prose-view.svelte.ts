@@ -23,9 +23,9 @@ export type ProsemirrorDocData = z.infer<typeof prosemirrorDocs>;
 
 type ProseViewOptions = {
 	onUpdate: (data: ProsemirrorDocData) => void;
-	onCtrlP: () => void;
-	onCtrlN: () => void;
-	onCtrlM: () => void;
+	onPlayPause: () => void;
+	onSeekBack: () => void;
+	onSeekForward: () => void;
 	editable?: boolean;
 };
 
@@ -68,9 +68,9 @@ export class ProseView {
 	state: EditorState | null = $state.raw(null);
 	schema = editorSchema;
 	#onUpdate?: (data: ProsemirrorDocData) => void;
-	#onCtrlP?: () => void;
-	#onCtrlN?: () => void;
-	#onCtrlM?: () => void;
+	#onPlayPause?: () => void;
+	#onSeekBack?: () => void;
+	#onSeekForward?: () => void;
 
 	constructor(
 		target: HTMLDivElement,
@@ -78,9 +78,9 @@ export class ProseView {
 		options?: Partial<ProseViewOptions>
 	) {
 		this.#onUpdate = options?.onUpdate;
-		this.#onCtrlP = options?.onCtrlP;
-		this.#onCtrlN = options?.onCtrlN;
-		this.#onCtrlM = options?.onCtrlM;
+		this.#onPlayPause = options?.onPlayPause;
+		this.#onSeekBack = options?.onSeekBack;
+		this.#onSeekForward = options?.onSeekForward;
 
 		let doc;
 
@@ -96,9 +96,9 @@ export class ProseView {
 				...exampleSetup({ schema: editorSchema, menuBar: false }),
 				emptyParagraphPlugin,
 				createCustomKeyMapPlugin({
-					onCtrlP: () => this.#onCtrlP?.(),
-					onCtrlN: () => this.#onCtrlN?.(),
-					onCtrlM: () => this.#onCtrlM?.()
+					onPlayPause: () => this.#onPlayPause?.(),
+					onSeekBack: () => this.#onSeekBack?.(),
+					onSeekForward: () => this.#onSeekForward?.()
 				})
 			]
 		});
@@ -127,9 +127,9 @@ export class ProseView {
 
 	setHandlers(handlers: Partial<ProseViewOptions>) {
 		if ('onUpdate' in handlers) this.#onUpdate = handlers.onUpdate;
-		if ('onCtrlP' in handlers) this.#onCtrlP = handlers.onCtrlP;
-		if ('onCtrlN' in handlers) this.#onCtrlN = handlers.onCtrlN;
-		if ('onCtrlM' in handlers) this.#onCtrlM = handlers.onCtrlM;
+		if ('onPlayPause' in handlers) this.#onPlayPause = handlers.onPlayPause;
+		if ('onSeekBack' in handlers) this.#onSeekBack = handlers.onSeekBack;
+		if ('onSeekForward' in handlers) this.#onSeekForward = handlers.onSeekForward;
 	}
 
 	registerPlugin(plugin: Plugin) {

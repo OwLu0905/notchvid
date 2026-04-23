@@ -7,6 +7,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { onDestroy, untrack } from 'svelte';
 	import { markVideoDone, updateVideoMarkdown } from '$lib/remote/video.remote';
+	import { getClientTz } from '$lib/utils/tz';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 
@@ -71,9 +72,9 @@
 			untrack(() => content ?? ''),
 			{
 				onUpdate: (data) => debouncedSave(() => storeMarkdown(data)),
-				onCtrlP: playPause,
-				onCtrlN: () => playBackForth(true),
-				onCtrlM: () => playBackForth(false)
+				onPlayPause: playPause,
+				onSeekBack: () => playBackForth(true),
+				onSeekForward: () => playBackForth(false)
 			}
 		);
 	});
@@ -82,9 +83,9 @@
 	$effect(() => {
 		editor?.setHandlers({
 			onUpdate: (data) => debouncedSave(() => storeMarkdown(data)),
-			onCtrlP: playPause,
-			onCtrlN: () => playBackForth(true),
-			onCtrlM: () => playBackForth(false)
+			onPlayPause: playPause,
+			onSeekBack: () => playBackForth(true),
+			onSeekForward: () => playBackForth(false)
 		});
 	});
 
@@ -107,14 +108,14 @@
 			'm-1.5 overflow-hidden transition-[color,box-shadow] has-focus-visible:border-ring has-focus-visible:ring-[3px]  has-focus-visible:ring-ring/50'
 		)}
 	>
-		<div class="min-h-0 flex-1 overflow-auto">
+		<div class="flex min-h-0 flex-1 flex-col overflow-auto">
 			<div
 				class={cn(
-					'prose prose-base w-full max-w-none px-4 font-sans prose-slate dark:prose-invert prose-ol:list-decimal prose-ul:list-disc prose-li:marker:text-primary',
+					'prose prose-base flex w-full max-w-none flex-1 flex-col px-4 font-sans prose-slate dark:prose-invert prose-ol:list-decimal prose-ul:list-disc prose-li:marker:text-primary',
 					'[&_li_p]:m-0!'
 				)}
 			>
-				<div class="min-w-0 wrap-anywhere!" bind:this={editorContainer}></div>
+				<div class="min-w-0 flex-1 wrap-anywhere!" bind:this={editorContainer}></div>
 			</div>
 		</div>
 		<div
@@ -137,7 +138,7 @@
 					variant="ghost"
 					class="gap-1.5 text-muted-foreground hover:text-primary"
 					onclick={async () => {
-						await markVideoDone(videoId);
+						await markVideoDone({ videoId, tz: getClientTz() });
 						status = 'done';
 					}}
 				>
