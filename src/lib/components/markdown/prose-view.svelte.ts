@@ -6,7 +6,7 @@ import { exampleSetup } from './basic/exampleSetup';
 import { toggleMark } from 'prosemirror-commands';
 import { Fragment, Node, type Attrs, type MarkType } from 'prosemirror-model';
 import { editorSchema } from './schema';
-import { slashCommandKey } from './plugin/slash-command-plugin';
+import { slashCommandKey, type TimeBlockVariant } from './plugin/slash-command-plugin';
 import { createCustomKeyMapPlugin } from './plugin/yt-keymap-plugin';
 import { DOMParser } from 'prosemirror-model';
 import { formatSecondsToMMSS } from '$lib/utils';
@@ -170,7 +170,7 @@ export class ProseView {
 		tm(this.view!.state, this.view!.dispatch, this.view!);
 	}
 
-	insertTimeBlock(time: number) {
+	insertTimeBlock(time: number, variant: TimeBlockVariant = 'time') {
 		const state = slashCommandKey.getState(this.view!.state);
 
 		const formattedTime = formatSecondsToMMSS(time);
@@ -180,7 +180,7 @@ export class ProseView {
 		let tr = this.view!.state.tr.delete(from, to);
 
 		// Then insert the timeBlock and space
-		const timeNode = this.schema.nodes.timeBlock.create({ time: formattedTime });
+		const timeNode = this.schema.nodes.timeBlock.create({ time: formattedTime, variant });
 		const spaceNode = this.schema.text(' ');
 		const fragment = Fragment.from([timeNode, spaceNode]);
 		tr = tr.replaceWith(from, from, fragment);

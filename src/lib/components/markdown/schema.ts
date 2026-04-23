@@ -41,14 +41,17 @@ const timeBlockSpec: NodeSpec = {
 	inline: true,
 	atom: true,
 	attrs: {
-		time: { default: '' }
+		time: { default: '' },
+		variant: { default: 'time' }
 	},
 	toDOM(node) {
+		const variant = node.attrs.variant || 'time';
 		return [
 			'span',
 			{
-				class: 'time-block',
-				'data-time': node.attrs.time
+				class: `time-block time-block-${variant}`,
+				'data-time': node.attrs.time,
+				'data-variant': variant
 			},
 			`${node.attrs.time}`
 		];
@@ -58,7 +61,10 @@ const timeBlockSpec: NodeSpec = {
 			tag: 'span.time-block',
 			getAttrs(dom) {
 				if (typeof dom === 'string') return {};
-				return { time: dom.getAttribute('data-time') || '' };
+				return {
+					time: dom.getAttribute('data-time') || '',
+					variant: dom.getAttribute('data-variant') || 'time'
+				};
 			}
 		}
 	]

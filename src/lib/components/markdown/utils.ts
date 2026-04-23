@@ -10,3 +10,13 @@ export function clampToViewport(
 		top: Math.max(padding, Math.min(coords.top, maxTop))
 	};
 }
+
+export function getScrollContainer(el: HTMLElement | null): HTMLElement | null {
+	let node: HTMLElement | null = el?.parentElement ?? null;
+	while (node) {
+		const overflowY = getComputedStyle(node).overflowY;
+		if (overflowY === 'auto' || overflowY === 'scroll') return node;
+		node = node.parentElement;
+	}
+	return null;
+}
