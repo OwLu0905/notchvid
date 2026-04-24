@@ -94,7 +94,9 @@ export function slashCommandPlugin(options?: SlashCommandOptions) {
 				if (!tr.docChanged && !tr.selectionSet) return pluginState;
 
 				const { $from: _from } = tr.selection;
-				const textBefore = _from.parent.textContent.slice(0, _from.parentOffset);
+				// textBetween (with empty leafText) skips atom inline nodes like timeBlock
+				// so the slice lines up with actual text before the cursor.
+				const textBefore = _from.parent.textBetween(0, _from.parentOffset, '', '');
 				const match = textBefore.match(/\/(\w*)$/);
 
 				if (match) {

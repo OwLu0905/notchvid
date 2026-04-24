@@ -59,7 +59,7 @@
 			>
 				{@render child(Bold, editor.schema.marks.strong)}
 				{@render child(Highlighter, editor.schema.marks.highlight, {
-					color: 'oklch(from var(--destructive) l c h / 0.3)'
+					color: 'oklch(from var(--chart-2) l c h / 0.5)'
 				})}
 				{@render child(Strikethrough, editor.schema.marks.strikethrough)}
 			</div>

@@ -44,7 +44,9 @@
 			</YtPlayer>
 		{/key}
 	</div>
-	<div class="flex min-h-0 w-full min-w-0 shrink-0 flex-col lg:w-[clamp(24rem,32vw,40rem)]">
+	<div
+		class="flex h-1/2 min-h-0 w-full min-w-0 shrink-0 flex-col lg:h-full lg:w-[clamp(24rem,32vw,40rem)]"
+	>
 		{#key videoId}
 			<ProsemirrorMarkdown
 				{videoId}
