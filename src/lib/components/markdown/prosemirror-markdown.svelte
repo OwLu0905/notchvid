@@ -110,12 +110,11 @@
 		try {
 			await updateVideoMarkdown({ videoId, content: data });
 			lastSavedHash = hash;
-			clearLocal(videoId);
+			if (!pendingData) clearLocal(videoId);
 		} catch {
 			// Local entry stays as recovery; next edit will repopulate pendingData and retry.
 		} finally {
 			saving = false;
-			if (pendingData) flush();
 		}
 	}
 
