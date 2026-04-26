@@ -54,6 +54,7 @@
 		}
 		return items;
 	});
+
 </script>
 
 <svelte:head>
@@ -85,7 +86,7 @@
 									{@const external = isExternal(crumb.href)}
 									<Breadcrumb.Link
 										href={crumb.href}
-										class="inline-flex items-center gap-1"
+										class="inline-flex max-w-[60vw] items-center gap-1 sm:max-w-[40ch]"
 										onclick={external
 											? (e: MouseEvent) => {
 													e.preventDefault();
@@ -93,13 +94,18 @@
 												}
 											: undefined}
 									>
-										{crumb.label}
+										<span class="truncate" title={crumb.label}>{crumb.label}</span>
 										{#if external}
-											<ExternalLinkIcon class="size-3.5" />
+											<ExternalLinkIcon class="size-3.5 shrink-0" />
 										{/if}
 									</Breadcrumb.Link>
 								{:else}
-									<Breadcrumb.Page>{crumb.label}</Breadcrumb.Page>
+									<Breadcrumb.Page
+										class="block max-w-[60vw] truncate sm:max-w-[40ch]"
+										title={crumb.label}
+									>
+										{crumb.label}
+									</Breadcrumb.Page>
 								{/if}
 							</Breadcrumb.Item>
 							{#if i < crumbs.length - 1}
