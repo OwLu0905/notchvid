@@ -150,6 +150,13 @@ export class ProseView {
 		this.view.updateState(newState);
 	}
 
+	setContent(content: object) {
+		if (!this.view) return;
+		const newDoc = Node.fromJSON(editorSchema, content);
+		const tr = this.view.state.tr.replaceWith(0, this.view.state.doc.content.size, newDoc.content);
+		this.view.dispatch(tr);
+	}
+
 	isActive(type: MarkType) {
 		// NOTE: keep reactivity
 		this.state;

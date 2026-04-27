@@ -6,11 +6,13 @@
 	import SlashCommandView from './slash-command-view.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { markVideoDone, updateVideoMarkdown } from '$lib/remote/video.remote';
 	import { getClientTz } from '$lib/utils/tz';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import { DOMSerializer, Node as PMNode } from 'prosemirror-model';
+	import { editorSchema } from './schema';
 
 	interface Props {
 		videoId: string;
@@ -34,6 +36,7 @@
 	const DEBOUNCE_MS = 1500;
 	const MAX_WAIT_MS = 10_000;
 	const storageKey = (id: string) => `notchvid:editor:${id}`;
+	const decidedKey = (id: string) => `notchvid:editor:decided:${id}`;
 
 	type LocalEntry = {
 		content: ProsemirrorDocData;
@@ -52,10 +55,17 @@
 	let lastSavedHash = '';
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let maxWaitTimer: ReturnType<typeof setTimeout> | undefined;
-	let lastId: string | null = null;
+
+	function stableStringify(value: unknown): string {
+		if (value === null || typeof value !== 'object') return JSON.stringify(value);
+		if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']';
+		const obj = value as Record<string, unknown>;
+		const keys = Object.keys(obj).sort();
+		return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+	}
 
 	function hashContent(data: ProsemirrorDocData): string {
-		return JSON.stringify(data ?? null);
+		return stableStringify(data ?? null);
 	}
 
 	function readLocal(id: string): LocalEntry | null {
@@ -82,6 +92,22 @@
 			localStorage.removeItem(storageKey(id));
 		} catch {
 			// ignore
+		}
+	}
+
+	function markDecided(id: string, hash: string) {
+		try {
+			sessionStorage.setItem(decidedKey(id), hash);
+		} catch {
+			// ignore
+		}
+	}
+
+	function isDecided(id: string, hash: string): boolean {
+		try {
+			return sessionStorage.getItem(decidedKey(id)) === hash;
+		} catch {
+			return false;
 		}
 	}
 
@@ -145,40 +171,28 @@
 	}
 
 	function restoreLocal() {
-		if (!restorePrompt) return;
+		if (!restorePrompt || !editor) return;
 		const local = restorePrompt;
+		markDecided(videoId, hashContent(local.content));
 		restorePrompt = null;
-		mountEditor(local.content);
-		pendingData = local.content;
+		editor.setContent(local.content as object);
 		flush();
 	}
 
 	function discardLocal() {
+		if (restorePrompt) markDecided(videoId, hashContent(restorePrompt.content));
 		restorePrompt = null;
 		clearLocal(videoId);
 	}
 
-	$effect(() => {
-		if (videoId === lastId) return;
-		lastId = videoId;
-
-		if (debounceTimer) {
-			clearTimeout(debounceTimer);
-			debounceTimer = undefined;
-		}
-		if (maxWaitTimer) {
-			clearTimeout(maxWaitTimer);
-			maxWaitTimer = undefined;
-		}
-		pendingData = null;
-
-		const initialContent = untrack(() => content) as ProsemirrorDocData;
+	onMount(() => {
+		const initialContent = content as ProsemirrorDocData;
 		lastSavedHash = hashContent(initialContent);
 
 		const local = readLocal(videoId);
-		if (local && local.hash !== lastSavedHash) {
+		if (local && local.hash !== lastSavedHash && !isDecided(videoId, local.hash)) {
 			restorePrompt = { content: local.content, updatedAt: local.updatedAt };
-		} else if (local) {
+		} else if (local && local.hash === lastSavedHash) {
 			clearLocal(videoId);
 		}
 
@@ -202,6 +216,24 @@
 	});
 
 	let markdownContent = $derived(content);
+
+	function docToHtml(doc: unknown): string {
+		if (!doc || typeof document === 'undefined') return '';
+		try {
+			const node = PMNode.fromJSON(editorSchema, doc);
+			const tmp = document.createElement('div');
+			tmp.appendChild(DOMSerializer.fromSchema(editorSchema).serializeFragment(node.content));
+			return tmp.innerHTML;
+		} catch {
+			return '';
+		}
+	}
+
+	let serverHtml = $derived.by(() => (restorePrompt ? docToHtml(content) : ''));
+	let localHtml = $derived.by(() => {
+		const local = restorePrompt;
+		return local ? docToHtml(local.content) : '';
+	});
 
 	function formatRelative(ts: number): string {
 		const diff = Date.now() - ts;
@@ -281,7 +313,7 @@
 		if (!open && restorePrompt) restorePrompt = null;
 	}}
 >
-	<AlertDialog.Content>
+	<AlertDialog.Content class="max-w-[95vw]! sm:max-w-6xl">
 		<AlertDialog.Header>
 			<AlertDialog.Title>Unsaved changes found</AlertDialog.Title>
 			<AlertDialog.Description>
@@ -289,12 +321,52 @@
 				<span class="font-medium"
 					>{restorePrompt ? formatRelative(restorePrompt.updatedAt) : ''}</span
 				>
-				that haven't been synced to the server. Restore them?
+				that haven't been synced to the server. Compare the two versions below.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
+
+		<div class="flex flex-col gap-3 sm:flex-row">
+			<div class="flex min-w-0 flex-1 flex-col">
+				<div class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+					<span class="size-2 rounded-sm bg-rose-500/60"></span>
+					Server (current)
+				</div>
+				<div
+					class={cn(
+						'max-h-[30vh] overflow-auto rounded-md border bg-sidebar p-4 wrap-anywhere sm:max-h-[45vh]',
+						'prose prose-sm max-w-none font-sans prose-slate dark:prose-invert prose-ol:list-decimal prose-ul:list-disc prose-li:marker:text-primary',
+						'[&_li_p]:m-0!'
+					)}
+				>
+					{@html serverHtml}
+				</div>
+			</div>
+			<div class="flex min-w-0 flex-1 flex-col">
+				<div class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+					<span class="size-2 rounded-sm bg-emerald-500/80"></span>
+					Local
+				</div>
+				<div
+					class={cn(
+						'max-h-[30vh] overflow-auto rounded-md border bg-sidebar p-4 wrap-anywhere sm:max-h-[45vh]',
+						'prose prose-sm max-w-none font-sans prose-slate dark:prose-invert prose-ol:list-decimal prose-ul:list-disc prose-li:marker:text-primary',
+						'[&_li_p]:m-0!'
+					)}
+				>
+					{@html localHtml}
+				</div>
+			</div>
+		</div>
+
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel onclick={discardLocal}>Use server version</AlertDialog.Cancel>
-			<AlertDialog.Action onclick={restoreLocal}>Restore</AlertDialog.Action>
+			<AlertDialog.Cancel onclick={discardLocal} class="gap-1.5">
+				<span class="size-2 rounded-sm bg-rose-500/60"></span>
+				Use server version
+			</AlertDialog.Cancel>
+			<AlertDialog.Action onclick={restoreLocal} class="gap-1.5">
+				<span class="size-2 rounded-sm bg-emerald-500/80"></span>
+				Restore local
+			</AlertDialog.Action>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
