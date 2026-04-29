@@ -11,7 +11,7 @@ import {
 import { relations } from 'drizzle-orm';
 import { user } from './auth';
 
-export const videoStatus = pgEnum('video_status', ['unfinished', 'done']);
+export const videoStatus = pgEnum('video_status', ['todo', 'doing', 'done']);
 
 export const videoSessions = pgTable(
 	'video_sessions',
@@ -23,7 +23,7 @@ export const videoSessions = pgTable(
 		title: text('title').notNull(),
 		url: text('url').notNull(),
 		thumbnailUrl: text('thumbnail_url'),
-		status: videoStatus('status').default('unfinished').notNull(),
+		status: videoStatus('status').default('todo').notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true })
 			.defaultNow()

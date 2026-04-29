@@ -7,8 +7,8 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { onDestroy, onMount } from 'svelte';
-	import { markVideoDone, updateVideoMarkdown } from '$lib/remote/video.remote';
-	import { getClientTz } from '$lib/utils/tz';
+	import { markVideoDoing, markVideoDone, updateVideoMarkdown } from '$lib/remote/video.remote';
+	import PlayIcon from '@lucide/svelte/icons/play';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import { DOMSerializer, Node as PMNode } from 'prosemirror-model';
@@ -17,7 +17,7 @@
 	interface Props {
 		videoId: string;
 		content: unknown;
-		status: 'done' | 'unfinished';
+		status: 'todo' | 'doing' | 'done';
 		currentTime: number;
 		playTimeBlock: (v: number) => void;
 		playPause: () => void;
@@ -284,13 +284,26 @@
 					<span class="font-medium tracking-wider">Saved</span>
 				</div>
 			{/if}
-			{#if status === 'unfinished'}
+			{#if status === 'todo'}
 				<Button
 					size="xs"
 					variant="ghost"
 					class="gap-1.5 text-muted-foreground hover:text-primary"
 					onclick={async () => {
-						await markVideoDone({ videoId, tz: getClientTz() });
+						await markVideoDoing(videoId);
+						status = 'doing';
+					}}
+				>
+					<PlayIcon class="size-3.5" />
+					Start
+				</Button>
+			{:else if status === 'doing'}
+				<Button
+					size="xs"
+					variant="ghost"
+					class="gap-1.5 text-muted-foreground hover:text-primary"
+					onclick={async () => {
+						await markVideoDone(videoId);
 						status = 'done';
 					}}
 				>

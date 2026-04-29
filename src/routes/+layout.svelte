@@ -11,7 +11,7 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import Loader from '$lib/components/Loader.svelte';
-	import { getVideoSessions } from '$lib/remote/video.remote';
+	import { getVideoWithMarkdown } from '$lib/remote/video.remote';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	let { children, data } = $props();
 
@@ -43,7 +43,7 @@
 			items.push({ label: 'New Video' });
 		} else if (pathname.startsWith('/video/') && videoId) {
 			items.push({ label: 'Video', href: '/video' });
-			const current = getVideoSessions().current?.find((v) => v.id === videoId);
+			const current = getVideoWithMarkdown(videoId).current?.video;
 			let href: string | undefined;
 			if (current?.url) {
 				const ytURL = new URL('https://www.youtube.com/watch');

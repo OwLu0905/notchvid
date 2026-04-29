@@ -1,7 +1,6 @@
 import { command, getRequestEvent, query } from '$app/server';
-import { and, desc, eq, gte, lt } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
-import { fromZonedTime } from 'date-fns-tz';
 import * as z from 'zod';
 
 import {
@@ -10,14 +9,12 @@ import {
 	type VideoMarkdown,
 	type VideoSession
 } from '$lib/server/database/schema/video';
-
-const tzField = z.string().min(1);
+import { DEFAULT_DONE_LIMIT } from '$lib/utils';
 
 const createVideoInput = z.object({
 	title: z.string().min(1),
 	url: z.string(),
-	thumbnailUrl: z.string().url().optional(),
-	tz: tzField
+	thumbnailUrl: z.string().url().optional()
 });
 
 const prosemirrorDoc = z
@@ -34,12 +31,9 @@ const updateMarkdownInput = z.object({
 
 const videoIdInput = z.uuid();
 
-const videoIdWithTzInput = z.object({
-	videoId: z.uuid(),
-	tz: tzField
+const doneListInput = z.object({
+	limit: z.number().int().positive().max(200)
 });
-
-const todayGoalInput = z.object({ tz: tzField });
 
 const getSession = query(() => {
 	const event = getRequestEvent();
@@ -79,66 +73,40 @@ export const createVideoSession = command(createVideoInput, async (data) => {
 		.returning();
 
 	await db.insert(videoMarkdown).values({ videoId: session.id, content: null });
-	await getVideoSessions().refresh();
-	await getTodayGoal({ tz: data.tz }).refresh();
+	await getActiveSessions().refresh();
 
 	return session.id;
 });
 
-export const getVideoSessions = query(async () => {
+export const getActiveSessions = query(async () => {
 	const user = await requireAuth();
 	const { db } = getRequestEvent().locals;
 
 	return db
 		.select()
 		.from(videoSessions)
-		.where(eq(videoSessions.userId, user.id))
-		.orderBy(desc(videoSessions.createdAt));
+		.where(and(eq(videoSessions.userId, user.id), inArray(videoSessions.status, ['todo', 'doing'])))
+		.orderBy(desc(videoSessions.updatedAt));
 });
 
-export type TodayGoal = {
-	done: VideoSession[];
-	today: VideoSession[];
+export type DonePage = {
+	items: VideoSession[];
+	hasMore: boolean;
 };
 
-export const getTodayGoal = query(todayGoalInput, async ({ tz }): Promise<TodayGoal> => {
+export const getDoneSessions = query(doneListInput, async ({ limit }): Promise<DonePage> => {
 	const user = await requireAuth();
 	const { db } = getRequestEvent().locals;
 
-	// Compute "today" in the client's IANA timezone, then convert the day boundary to UTC
-	// so the DB query works regardless of server TZ (Cloudflare Workers run in UTC).
-	const now = new Date();
-	const ymd = new Intl.DateTimeFormat('en-CA', {
-		timeZone: tz,
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).format(now); // "YYYY-MM-DD"
-	const startOfDay = fromZonedTime(`${ymd}T00:00:00`, tz);
-	const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+	const rows = await db
+		.select()
+		.from(videoSessions)
+		.where(and(eq(videoSessions.userId, user.id), eq(videoSessions.status, 'done')))
+		.orderBy(desc(videoSessions.updatedAt))
+		.limit(limit + 1);
 
-	const [done, today] = await Promise.all([
-		db
-			.select()
-			.from(videoSessions)
-			.where(and(eq(videoSessions.userId, user.id), eq(videoSessions.status, 'done')))
-			.orderBy(desc(videoSessions.updatedAt))
-			.limit(3),
-		db
-			.select()
-			.from(videoSessions)
-			.where(
-				and(
-					eq(videoSessions.userId, user.id),
-					eq(videoSessions.status, 'unfinished'),
-					gte(videoSessions.createdAt, startOfDay),
-					lt(videoSessions.createdAt, startOfTomorrow)
-				)
-			)
-			.orderBy(desc(videoSessions.createdAt))
-	]);
-
-	return { done, today };
+	const hasMore = rows.length > limit;
+	return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
 });
 
 export type VideoWithMarkdown = {
@@ -185,20 +153,38 @@ export const updateVideoMarkdown = command(updateMarkdownInput, async ({ videoId
 	return updated;
 });
 
-export const deleteVideoSession = command(videoIdWithTzInput, async ({ videoId, tz }) => {
+export const deleteVideoSession = command(videoIdInput, async (videoId) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
 	const { db } = getRequestEvent().locals;
 
 	await db.delete(videoSessions).where(eq(videoSessions.id, videoId));
 
-	await getVideoSessions().refresh();
-	await getTodayGoal({ tz }).refresh();
+	await Promise.all([
+		getActiveSessions().refresh(),
+		getDoneSessions({ limit: DEFAULT_DONE_LIMIT }).refresh()
+	]);
 
 	return { videoId };
 });
 
-export const markVideoDone = command(videoIdWithTzInput, async ({ videoId, tz }) => {
+export const markVideoDoing = command(videoIdInput, async (videoId) => {
+	const user = await requireAuth();
+	await requireOwnedSession(videoId, user.id);
+	const { db } = getRequestEvent().locals;
+
+	const [updated] = await db
+		.update(videoSessions)
+		.set({ status: 'doing' })
+		.where(and(eq(videoSessions.id, videoId), eq(videoSessions.status, 'todo')))
+		.returning();
+
+	await getActiveSessions().refresh();
+
+	return updated;
+});
+
+export const markVideoDone = command(videoIdInput, async (videoId) => {
 	const user = await requireAuth();
 	await requireOwnedSession(videoId, user.id);
 	const { db } = getRequestEvent().locals;
@@ -206,11 +192,13 @@ export const markVideoDone = command(videoIdWithTzInput, async ({ videoId, tz })
 	const [updated] = await db
 		.update(videoSessions)
 		.set({ status: 'done' })
-		.where(and(eq(videoSessions.id, videoId), eq(videoSessions.status, 'unfinished')))
+		.where(and(eq(videoSessions.id, videoId), eq(videoSessions.status, 'doing')))
 		.returning();
 
-	await getVideoSessions().refresh();
-	await getTodayGoal({ tz }).refresh();
+	await Promise.all([
+		getActiveSessions().refresh(),
+		getDoneSessions({ limit: DEFAULT_DONE_LIMIT }).refresh()
+	]);
 
 	return updated;
 });

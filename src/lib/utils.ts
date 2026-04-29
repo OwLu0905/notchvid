@@ -22,3 +22,5 @@ export function parseMMSSToSeconds(timeString: string): number {
 	const [minutes, seconds] = timeString.split(':').map(Number);
 	return minutes * 60 + seconds;
 }
+
+export const DEFAULT_DONE_LIMIT = 10;

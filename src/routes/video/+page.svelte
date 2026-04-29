@@ -12,7 +12,6 @@
 	import Loader from '$lib/components/Loader.svelte';
 	import { goto } from '$app/navigation';
 	import { createVideoSession } from '$lib/remote/video.remote';
-	import { getClientTz } from '$lib/utils/tz';
 
 	const ytDlpSchema = z.object({
 		url: z.url()
@@ -40,7 +39,7 @@
 			try {
 				if (step == 2) {
 					isLoading = true;
-					const vidioId = await createVideoSession({ title, url, thumbnailUrl, tz: getClientTz() });
+					const vidioId = await createVideoSession({ title, url, thumbnailUrl });
 					reset();
 					goto(`/video/${vidioId}`);
 				} else {
