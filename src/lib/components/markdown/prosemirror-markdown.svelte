@@ -11,8 +11,10 @@
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import LocateFixedIcon from '@lucide/svelte/icons/locate-fixed';
 	import { DOMSerializer, Node as PMNode } from 'prosemirror-model';
 	import { editorSchema } from './schema';
+	import { parseMMSSToSeconds } from '$lib/utils';
 
 	interface Props {
 		videoId: string;
@@ -235,6 +237,47 @@
 		return local ? docToHtml(local.content) : '';
 	});
 
+	function locateCurrentTimeBlock() {
+		if (!editorContainer) return;
+		const blocks = editorContainer.querySelectorAll<HTMLSpanElement>('span.time-block[data-time]');
+		if (blocks.length === 0) return;
+
+		// Pick the latest block whose timestamp has already been reached. This
+		// matches "the annotation that applies to the moment we're watching",
+		// which is closest-before for time markers and the start of an unclear
+		// or shadow span for ranges. Falls back to the first block when the
+		// playhead is before any annotation.
+		let target: HTMLSpanElement | null = null;
+		let targetTime = -Infinity;
+		for (const block of blocks) {
+			const t = parseMMSSToSeconds(block.dataset.time ?? '');
+			if (Number.isNaN(t)) continue;
+			if (t <= currentTime && t > targetTime) {
+				targetTime = t;
+				target = block;
+			}
+		}
+		if (!target) target = blocks[0];
+
+		// Scroll the surrounding list item into view so the note around the
+		// badge is visible, but pulse the badge itself so the highlight lands
+		// exactly where the eye is looking.
+		const scrollTarget = target.closest('li') ?? target;
+		scrollTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
+
+		const pulseTarget = target;
+		pulseTarget.classList.remove('time-block-pulse');
+		// Reading offsetWidth forces a layout flush between remove and add so
+		// the browser registers a real class change and restarts the keyframes.
+		void pulseTarget.offsetWidth;
+		pulseTarget.classList.add('time-block-pulse');
+		const onEnd = () => {
+			pulseTarget.classList.remove('time-block-pulse');
+			pulseTarget.removeEventListener('animationend', onEnd);
+		};
+		pulseTarget.addEventListener('animationend', onEnd);
+	}
+
 	function formatRelative(ts: number): string {
 		const diff = Date.now() - ts;
 		const min = Math.floor(diff / 60_000);
@@ -284,38 +327,50 @@
 					<span class="font-medium tracking-wider">Saved</span>
 				</div>
 			{/if}
-			{#if status === 'todo'}
+			<div class="flex items-center gap-1">
 				<Button
 					size="xs"
 					variant="ghost"
 					class="gap-1.5 text-muted-foreground hover:text-primary"
-					onclick={async () => {
-						await markVideoDoing(videoId);
-						status = 'doing';
-					}}
+					title="Scroll to the current time block"
+					onclick={locateCurrentTimeBlock}
 				>
-					<PlayIcon class="size-3.5" />
-					Start
+					<LocateFixedIcon class="size-3.5" />
+					Locate
 				</Button>
-			{:else if status === 'doing'}
-				<Button
-					size="xs"
-					variant="ghost"
-					class="gap-1.5 text-muted-foreground hover:text-primary"
-					onclick={async () => {
-						await markVideoDone(videoId);
-						status = 'done';
-					}}
-				>
-					<SparklesIcon class="size-3.5" />
-					Complete
-				</Button>
-			{:else}
-				<div class="flex gap-1.5 text-muted-foreground hover:text-primary">
-					<CircleCheckIcon class="size-3.5" />
-					Done
-				</div>
-			{/if}
+				{#if status === 'todo'}
+					<Button
+						size="xs"
+						variant="ghost"
+						class="gap-1.5 text-muted-foreground hover:text-primary"
+						onclick={async () => {
+							await markVideoDoing(videoId);
+							status = 'doing';
+						}}
+					>
+						<PlayIcon class="size-3.5" />
+						Start
+					</Button>
+				{:else if status === 'doing'}
+					<Button
+						size="xs"
+						variant="ghost"
+						class="gap-1.5 text-muted-foreground hover:text-primary"
+						onclick={async () => {
+							await markVideoDone(videoId);
+							status = 'done';
+						}}
+					>
+						<SparklesIcon class="size-3.5" />
+						Complete
+					</Button>
+				{:else}
+					<div class="flex gap-1.5 text-muted-foreground hover:text-primary">
+						<CircleCheckIcon class="size-3.5" />
+						Done
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 </div>
