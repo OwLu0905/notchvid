@@ -10,6 +10,7 @@ import {
 	type VideoSession
 } from '$lib/server/database/schema/video';
 import { DEFAULT_DONE_LIMIT } from '$lib/utils';
+import { sanitizeProseNode } from '$lib/components/markdown/utils';
 
 const createVideoInput = z.object({
 	title: z.string().min(1),
@@ -22,7 +23,8 @@ const prosemirrorDoc = z
 		type: z.literal('doc'),
 		content: z.array(z.any()).optional()
 	})
-	.nullable();
+	.nullable()
+	.transform((doc) => (doc ? sanitizeProseNode(doc) : doc));
 
 const updateMarkdownInput = z.object({
 	videoId: z.uuid(),

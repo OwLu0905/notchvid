@@ -15,6 +15,7 @@
 	import { DOMSerializer, Node as PMNode } from 'prosemirror-model';
 	import { editorSchema } from './schema';
 	import { parseMMSSToSeconds } from '$lib/utils';
+	import DOMPurify from 'dompurify';
 
 	interface Props {
 		videoId: string;
@@ -225,7 +226,9 @@
 			const node = PMNode.fromJSON(editorSchema, doc);
 			const tmp = document.createElement('div');
 			tmp.appendChild(DOMSerializer.fromSchema(editorSchema).serializeFragment(node.content));
-			return tmp.innerHTML;
+			return DOMPurify.sanitize(tmp.innerHTML, {
+				ALLOWED_URI_REGEXP: /^(?:https?|mailto|#|\/)/i
+			});
 		} catch {
 			return '';
 		}

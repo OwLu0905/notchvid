@@ -1,5 +1,6 @@
 import { schema as markdownSchema } from 'prosemirror-markdown';
 import { Schema, type MarkSpec, type NodeSpec } from 'prosemirror-model';
+import { safeColor, safeUrl } from './utils';
 
 const myMarkSpec: MarkSpec = {
 	attrs: { color: { default: 'red' } },
@@ -8,19 +9,51 @@ const myMarkSpec: MarkSpec = {
 			tag: 'span[data-highlight]',
 			getAttrs: (dom) => {
 				if (typeof dom === 'string') return {};
-				return { color: dom.getAttribute('data-color') || 'red' };
+				return { color: safeColor(dom.getAttribute('data-color')) };
 			}
 		}
 	],
 	toDOM(mark) {
+		const color = safeColor(mark.attrs.color);
 		return [
 			'span',
 			{
 				'data-highlight': 'true',
-				'data-color': mark.attrs.color,
-				style: `background-color: ${mark.attrs.color}`
+				'data-color': color,
+				style: `background-color: ${color}`
 			},
 			0
+		];
+	}
+};
+
+const safeLinkSpec: MarkSpec = {
+	attrs: {
+		href: { default: '' },
+		title: { default: null }
+	},
+	inclusive: false,
+	parseDOM: [
+		{
+			tag: 'a[href]',
+			getAttrs(dom) {
+				if (typeof dom === 'string') return {};
+				return {
+					href: safeUrl(dom.getAttribute('href')),
+					title: dom.getAttribute('title')
+				};
+			}
+		}
+	],
+	toDOM(node) {
+		return [
+			'a',
+			{
+				href: safeUrl(node.attrs.href),
+				title: node.attrs.title,
+				rel: 'noopener noreferrer nofollow',
+				target: '_blank'
+			}
 		];
 	}
 };
@@ -81,6 +114,7 @@ type CustomNodes = 'timeBlock';
 export const editorSchema = new Schema<MarkdownNodes | CustomNodes, MarkdownMarks | CustomMarks>({
 	nodes: markdownSchema.spec.nodes.addToEnd('timeBlock', timeBlockSpec),
 	marks: markdownSchema.spec.marks
+		.update('link', safeLinkSpec)
 		.addToEnd('highlight', myMarkSpec)
 		.addToEnd('strikethrough', strikethroughSpec)
 });
