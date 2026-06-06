@@ -68,7 +68,7 @@
 			}
 			try {
 				localStorage.removeItem(`notchvid:editor:${deletedId}`);
-				localStorage.removeItem(`notchvid:editor:decided:${deletedId}`);
+				sessionStorage.removeItem(`notchvid:editor:decided:${deletedId}`);
 			} catch {
 				// storage may be disabled
 			}

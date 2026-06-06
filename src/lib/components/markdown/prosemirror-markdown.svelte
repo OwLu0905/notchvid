@@ -126,20 +126,21 @@
 		if (saving) return;
 		if (!pendingData) return;
 
+		const id = videoId;
 		const data = pendingData;
 		const hash = hashContent(data);
 		if (hash === lastSavedHash) {
 			pendingData = null;
-			clearLocal(videoId);
+			clearLocal(id);
 			return;
 		}
 
 		pendingData = null;
 		saving = true;
 		try {
-			await updateVideoMarkdown({ videoId, content: data });
+			await updateVideoMarkdown({ videoId: id, content: data });
 			lastSavedHash = hash;
-			if (!pendingData) clearLocal(videoId);
+			if (!pendingData) clearLocal(id);
 		} catch {
 			// Local entry stays as recovery; next edit will repopulate pendingData and retry.
 		} finally {
