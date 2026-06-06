@@ -122,23 +122,31 @@
 		}
 	}
 
-	// loadModule/unloadModule are valid YT iframe API methods at runtime but
-	// are absent from @types/youtube, so cast to access them.
+	// setOption/getOption are valid YT iframe API methods at runtime but
+	// absent from @types/youtube, so cast to access them.
+	type CaptionsTrack = { languageCode: string; languageName?: string; displayName?: string };
 	type CaptionsPlayer = YT.Player & {
-		loadModule: (name: string) => void;
-		unloadModule: (name: string) => void;
+		setOption: (module: string, option: string, value: unknown) => void;
+		getOption: <T = unknown>(module: string, option: string) => T | undefined;
 	};
 
 	export function toggleCaptions() {
 		if (!player) return;
 		const p = player as CaptionsPlayer;
 		if (captionsOn) {
-			p.unloadModule('captions');
+			p.setOption('captions', 'track', {});
 			captionsOn = false;
-		} else {
-			p.loadModule('captions');
-			captionsOn = true;
+			return;
 		}
+
+		// tracklist may be undefined if the captions module hasn't reported in yet,
+		// or empty if the video has no captions — bail rather than show an empty toggle.
+		const tracks = p.getOption<CaptionsTrack[]>('captions', 'tracklist');
+		if (!tracks?.length) return;
+
+		const target = tracks.find((t) => t.languageCode === 'en') ?? tracks[0];
+		p.setOption('captions', 'track', { languageCode: target.languageCode });
+		captionsOn = true;
 	}
 
 	export function playBackForth(back: boolean = true) {
