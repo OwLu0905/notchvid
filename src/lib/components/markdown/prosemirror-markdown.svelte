@@ -12,6 +12,7 @@
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import LocateFixedIcon from '@lucide/svelte/icons/locate-fixed';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import { DOMSerializer, Node as PMNode } from 'prosemirror-model';
 	import { editorSchema } from './schema';
 	import { parseMMSSToSeconds } from '$lib/utils';
@@ -50,6 +51,7 @@
 	let editor: ProseView | null = $state(null);
 	let editorContainer: HTMLDivElement;
 	let saving = $state(false);
+	let storageHealthy = $state(true);
 	let status = $derived(initialStatus);
 
 	let restorePrompt: { content: ProsemirrorDocData; updatedAt: number } | null = $state(null);
@@ -85,8 +87,11 @@
 		try {
 			const entry: LocalEntry = { content: data, hash, updatedAt: Date.now() };
 			localStorage.setItem(storageKey(id), JSON.stringify(entry));
+			storageHealthy = true;
 		} catch {
-			// quota exceeded or storage disabled — non-fatal
+			// quota exceeded or storage disabled — surface so the user knows the
+			// local-backup safety net isn't catching anything.
+			storageHealthy = false;
 		}
 	}
 
@@ -123,7 +128,13 @@
 			clearTimeout(maxWaitTimer);
 			maxWaitTimer = undefined;
 		}
-		if (saving) return;
+		if (saving) {
+			// Save already in flight. Re-arm debounce so the stranded
+			// pendingData gets retried once it completes — without the
+			// immediate retry that previously caused a save storm.
+			if (pendingData) debounceTimer = setTimeout(flush, DEBOUNCE_MS);
+			return;
+		}
 		if (!pendingData) return;
 
 		const id = videoId;
@@ -189,6 +200,23 @@
 		clearLocal(videoId);
 	}
 
+	// Fire-and-forget commit so route navigation doesn't strand the debounced
+	// save. localStorage is already current from scheduleSave, so this purely
+	// avoids the diff prompt appearing on return when the server save would
+	// otherwise have happened a moment later anyway.
+	function commitInFlight() {
+		if (saving || !pendingData) return;
+		const id = videoId;
+		const data = pendingData;
+		const hash = hashContent(data);
+		if (hash === lastSavedHash) {
+			pendingData = null;
+			clearLocal(id);
+			return;
+		}
+		void updateVideoMarkdown({ videoId: id, content: data }).catch(() => {});
+	}
+
 	onMount(() => {
 		const initialContent = content as ProsemirrorDocData;
 		lastSavedHash = hashContent(initialContent);
@@ -201,6 +229,8 @@
 		}
 
 		mountEditor(initialContent);
+
+		window.addEventListener('pagehide', commitInFlight);
 	});
 
 	// Keep handlers live if the parent re-binds them.
@@ -214,6 +244,8 @@
 	});
 
 	onDestroy(() => {
+		window.removeEventListener('pagehide', commitInFlight);
+		commitInFlight();
 		if (debounceTimer) clearTimeout(debounceTimer);
 		if (maxWaitTimer) clearTimeout(maxWaitTimer);
 		editor?.destroy();
@@ -318,17 +350,28 @@
 		<div
 			class="flex w-full shrink-0 items-center justify-between border-t bg-muted/30 px-6 py-2 text-xs"
 		>
-			{#if saving}
-				<div class="flex items-center gap-2 text-muted-foreground" in:fade>
-					<span class="size-1.5 animate-pulse rounded-full bg-amber-500"></span>
-					<span class="font-medium tracking-wider">Saving</span>
-				</div>
-			{:else}
-				<div class="flex items-center gap-2 text-muted-foreground">
-					<span class="size-1.5 rounded-full bg-emerald-500/80"></span>
-					<span class="font-medium tracking-wider">Saved</span>
-				</div>
-			{/if}
+			<div class="flex items-center gap-3">
+				{#if saving}
+					<div class="flex items-center gap-2 text-muted-foreground" in:fade>
+						<span class="size-1.5 animate-pulse rounded-full bg-amber-500"></span>
+						<span class="font-medium tracking-wider">Saving</span>
+					</div>
+				{:else}
+					<div class="flex items-center gap-2 text-muted-foreground">
+						<span class="size-1.5 rounded-full bg-emerald-500/80"></span>
+						<span class="font-medium tracking-wider">Saved</span>
+					</div>
+				{/if}
+				{#if !storageHealthy}
+					<div
+						class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400"
+						title="Local backup couldn't be written (storage quota or disabled). Your edits still sync to the server when online, but won't survive a tab close before that completes."
+					>
+						<TriangleAlertIcon class="size-3.5" />
+						<span class="font-medium tracking-wider">Local backup unavailable</span>
+					</div>
+				{/if}
+			</div>
 			<div class="flex items-center gap-1">
 				<Button
 					size="xs"
@@ -385,13 +428,14 @@
 >
 	<AlertDialog.Content class="max-w-[95vw]! sm:max-w-6xl">
 		<AlertDialog.Header>
-			<AlertDialog.Title>Unsaved changes found</AlertDialog.Title>
+			<AlertDialog.Title>Unsaved local edits found</AlertDialog.Title>
 			<AlertDialog.Description>
 				You have local edits from
 				<span class="font-medium"
 					>{restorePrompt ? formatRelative(restorePrompt.updatedAt) : ''}</span
 				>
-				that haven't been synced to the server. Compare the two versions below.
+				that never reached the server. Keep them, or discard them and stick with the server
+				version. Compare the two below before deciding.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 
@@ -429,13 +473,17 @@
 		</div>
 
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel onclick={discardLocal} class="gap-1.5">
+			<AlertDialog.Cancel
+				onclick={discardLocal}
+				variant="destructive"
+				class="gap-1.5"
+			>
 				<span class="size-2 rounded-sm bg-rose-500/60"></span>
-				Use server version
+				Discard local edits
 			</AlertDialog.Cancel>
 			<AlertDialog.Action onclick={restoreLocal} class="gap-1.5">
 				<span class="size-2 rounded-sm bg-emerald-500/80"></span>
-				Restore local
+				Keep my local edits
 			</AlertDialog.Action>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
