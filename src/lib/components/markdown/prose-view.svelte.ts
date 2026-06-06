@@ -26,6 +26,7 @@ type ProseViewOptions = {
 	onPlayPause: () => void;
 	onSeekBack: () => void;
 	onSeekForward: () => void;
+	onToggleCaptions: () => void;
 	editable?: boolean;
 };
 
@@ -71,6 +72,7 @@ export class ProseView {
 	#onPlayPause?: () => void;
 	#onSeekBack?: () => void;
 	#onSeekForward?: () => void;
+	#onToggleCaptions?: () => void;
 
 	constructor(
 		target: HTMLDivElement,
@@ -81,6 +83,7 @@ export class ProseView {
 		this.#onPlayPause = options?.onPlayPause;
 		this.#onSeekBack = options?.onSeekBack;
 		this.#onSeekForward = options?.onSeekForward;
+		this.#onToggleCaptions = options?.onToggleCaptions;
 
 		let doc;
 
@@ -98,7 +101,8 @@ export class ProseView {
 				createCustomKeyMapPlugin({
 					onPlayPause: () => this.#onPlayPause?.(),
 					onSeekBack: () => this.#onSeekBack?.(),
-					onSeekForward: () => this.#onSeekForward?.()
+					onSeekForward: () => this.#onSeekForward?.(),
+					onToggleCaptions: () => this.#onToggleCaptions?.()
 				})
 			]
 		});
@@ -130,6 +134,7 @@ export class ProseView {
 		if ('onPlayPause' in handlers) this.#onPlayPause = handlers.onPlayPause;
 		if ('onSeekBack' in handlers) this.#onSeekBack = handlers.onSeekBack;
 		if ('onSeekForward' in handlers) this.#onSeekForward = handlers.onSeekForward;
+		if ('onToggleCaptions' in handlers) this.#onToggleCaptions = handlers.onToggleCaptions;
 	}
 
 	registerPlugin(plugin: Plugin) {

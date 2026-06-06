@@ -9,6 +9,7 @@ interface CustomKeyMapOptions {
 	onPlayPause?: () => void;
 	onSeekBack?: () => void;
 	onSeekForward?: () => void;
+	onToggleCaptions?: () => void;
 }
 
 // When the cursor sits right after an "[inline atom][space]" pair (the shape
@@ -60,6 +61,13 @@ export function createCustomKeyMapPlugin(options: CustomKeyMapOptions) {
 	if (options.onSeekForward) {
 		customKeyMap['Alt-l'] = () => {
 			options.onSeekForward?.();
+			return true;
+		};
+	}
+
+	if (options.onToggleCaptions) {
+		customKeyMap['Alt-c'] = () => {
+			options.onToggleCaptions?.();
 			return true;
 		};
 	}
