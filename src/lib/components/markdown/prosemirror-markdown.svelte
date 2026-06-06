@@ -25,6 +25,7 @@
 		playTimeBlock: (v: number) => void;
 		playPause: () => void;
 		playBackForth: (b: boolean) => void;
+		toggleCaptions: () => void;
 	}
 	let {
 		videoId,
@@ -33,7 +34,8 @@
 		currentTime,
 		playTimeBlock,
 		playPause,
-		playBackForth
+		playBackForth,
+		toggleCaptions
 	}: Props = $props();
 
 	const DEBOUNCE_MS = 1500;
@@ -170,7 +172,8 @@
 			onUpdate: (data) => scheduleSave(data),
 			onPlayPause: playPause,
 			onSeekBack: () => playBackForth(true),
-			onSeekForward: () => playBackForth(false)
+			onSeekForward: () => playBackForth(false),
+			onToggleCaptions: toggleCaptions
 		});
 	}
 
@@ -209,7 +212,8 @@
 			onUpdate: (data) => scheduleSave(data),
 			onPlayPause: playPause,
 			onSeekBack: () => playBackForth(true),
-			onSeekForward: () => playBackForth(false)
+			onSeekForward: () => playBackForth(false),
+			onToggleCaptions: toggleCaptions
 		});
 	});
 

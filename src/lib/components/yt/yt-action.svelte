@@ -1,6 +1,16 @@
 <script lang="ts">
 	import { cn, formatSecondsToMMSS } from '$lib/utils';
-	import { Play, Pause, RotateCcw, Plus, Minus, UndoDot, ArrowUpRight } from '@lucide/svelte';
+	import {
+		Play,
+		Pause,
+		RotateCcw,
+		Plus,
+		Minus,
+		UndoDot,
+		ArrowUpRight,
+		Captions,
+		CaptionsOff
+	} from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import Toggle, { toggleVariants } from '$lib/components/ui/toggle/toggle.svelte';
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
@@ -29,6 +39,7 @@
 	const rateListForward = [1.25, 1.5, 2];
 
 	let playBackRate = $state(1);
+	let captionsOn = $state(false);
 
 	function clickPlaybackRate(
 		e: MouseEvent & {
@@ -108,6 +119,25 @@
 			player?.playVideo();
 		} else {
 			player?.pauseVideo();
+		}
+	}
+
+	// loadModule/unloadModule are valid YT iframe API methods at runtime but
+	// are absent from @types/youtube, so cast to access them.
+	type CaptionsPlayer = YT.Player & {
+		loadModule: (name: string) => void;
+		unloadModule: (name: string) => void;
+	};
+
+	export function toggleCaptions() {
+		if (!player) return;
+		const p = player as CaptionsPlayer;
+		if (captionsOn) {
+			p.unloadModule('captions');
+			captionsOn = false;
+		} else {
+			p.loadModule('captions');
+			captionsOn = true;
 		}
 	}
 
@@ -323,6 +353,21 @@
 						<Plus />
 					</Button>
 				</ButtonGroup.Root>
+
+				<Button
+					type="button"
+					variant="ghost"
+					aria-pressed={captionsOn}
+					title={captionsOn ? 'Hide captions (Alt+C)' : 'Show captions (Alt+C)'}
+					onclick={toggleCaptions}
+					disabled={!isReady}
+				>
+					{#if captionsOn}
+						<Captions />
+					{:else}
+						<CaptionsOff />
+					{/if}
+				</Button>
 			</div>
 		</div>
 

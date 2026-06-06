@@ -32,6 +32,10 @@
 	function playBackForth(back = true) {
 		ytActionRef?.playBackForth(back);
 	}
+
+	function toggleCaptions() {
+		ytActionRef?.toggleCaptions();
+	}
 </script>
 
 <div class="flex h-full min-h-0 w-full flex-col gap-4 overflow-hidden lg:flex-row">
@@ -56,6 +60,7 @@
 				{playTimeBlock}
 				{playPause}
 				{playBackForth}
+				{toggleCaptions}
 			/>
 		{/key}
 	</div>
