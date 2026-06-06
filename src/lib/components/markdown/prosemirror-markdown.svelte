@@ -218,8 +218,6 @@
 		editor?.destroy();
 	});
 
-	let markdownContent = $derived(content);
-
 	function docToHtml(doc: unknown): string {
 		if (!doc || typeof document === 'undefined') return '';
 		try {
@@ -293,7 +291,7 @@
 	}
 </script>
 
-{#if editor && markdownContent}
+{#if editor}
 	<BubbleMenuView {editor} />
 	<SlashCommandView {editor} {currentTime} {playTimeBlock} />
 {/if}
