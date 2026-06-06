@@ -124,7 +124,9 @@
 
 	// setOption/getOption are valid YT iframe API methods at runtime but
 	// absent from @types/youtube, so cast to access them.
-	type CaptionsTrack = { languageCode: string; languageName?: string; displayName?: string };
+	// kind === 'asr' marks an auto-generated track; other fields vary, so keep
+	// the rest of the shape open and pass the whole object back to setOption.
+	type CaptionsTrack = { languageCode: string; kind?: string; [key: string]: unknown };
 	type CaptionsPlayer = YT.Player & {
 		setOption: (module: string, option: string, value: unknown) => void;
 		getOption: <T = unknown>(module: string, option: string) => T | undefined;
@@ -139,13 +141,24 @@
 			return;
 		}
 
-		// tracklist may be undefined if the captions module hasn't reported in yet,
-		// or empty if the video has no captions — bail rather than show an empty toggle.
+		// Prefer the tracklist: pick English, else the first available track.
 		const tracks = p.getOption<CaptionsTrack[]>('captions', 'tracklist');
-		if (!tracks?.length) return;
+		let target = tracks?.find((t) => t.languageCode === 'en') ?? tracks?.[0];
 
-		const target = tracks.find((t) => t.languageCode === 'en') ?? tracks[0];
-		p.setOption('captions', 'track', { languageCode: target.languageCode });
+		// Auto-generated (ASR) videos report an empty tracklist and an empty active
+		// track while captions are off, so there's no object to copy. They do expose
+		// translation languages, which a caption-less video won't — use that as the
+		// signal, then request the auto track by kind for YT to resolve.
+		if (!target) {
+			const translations = p.getOption<unknown[]>('captions', 'translationLanguages');
+			if (translations?.length) target = { languageCode: 'en', kind: 'asr' };
+		}
+
+		// Nothing to show (module not ready, or video has no captions) — bail rather
+		// than flip the toggle on with no visible captions.
+		if (!target) return;
+
+		p.setOption('captions', 'track', target);
 		captionsOn = true;
 	}
 
